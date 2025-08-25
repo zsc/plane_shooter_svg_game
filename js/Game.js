@@ -69,10 +69,22 @@ class Game {
                 this.player.update(dt, this.inputManager);
             };
             
+            playingState.enter = () => {
+                console.log('进入游戏状态');
+                // 重置玩家位置和状态
+                this.player.reset();
+            };
+            
             playingState.render = (renderer) => {
-                // 绘制游戏场景
+                // 清屏并绘制背景
                 renderer.clear();
                 renderer.drawBackground(this.gameLoop.getDeltaTime());
+                
+                // 绘制游戏提示（开始时显示）
+                if (this.gameLoop.frameCount < 180) { // 前3秒显示提示
+                    renderer.drawText('游戏开始！', 320, 200, 32, '#00FF00');
+                    renderer.drawText('使用方向键或WASD移动', 320, 240, 20, '#FFFFFF');
+                }
                 
                 // 绘制子弹
                 this.player.bullets.forEach(bullet => {

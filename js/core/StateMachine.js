@@ -30,9 +30,22 @@ class StateMachine {
             },
             render: (renderer) => {
                 renderer.clear();
-                renderer.drawText('全民飞机大战', 320, 300, 48, '#FFD700');
-                renderer.drawText('按 Enter 开始游戏', 320, 400, 24, '#FFFFFF');
+                
+                // 绘制简单的星空背景
+                renderer.drawRect(0, 0, GameConfig.CANVAS.WIDTH, GameConfig.CANVAS.HEIGHT, '#001a33');
+                
+                // 标题动画效果
+                const titleY = 250 + Math.sin(Date.now() * 0.002) * 10;
+                renderer.drawText('全民飞机大战', 320, titleY, 48, '#FFD700');
+                
+                // 闪烁的开始提示
+                if (Math.floor(Date.now() / 500) % 2 === 0) {
+                    renderer.drawText('按 Enter 开始游戏', 320, 400, 24, '#FFFFFF');
+                }
+                
                 renderer.drawText('按 F3 切换调试模式', 320, 500, 16, '#888888');
+                renderer.drawText('使用方向键或 WASD 控制战机', 320, 550, 16, '#888888');
+                renderer.drawText('按 ESC 暂停游戏', 320, 580, 16, '#888888');
             },
             exit: () => {
                 console.log('退出菜单状态');
@@ -74,10 +87,17 @@ class StateMachine {
                 // 暂停时不更新游戏逻辑
             },
             render: (renderer) => {
-                // 绘制暂停界面（保留游戏画面）
-                renderer.drawRect(0, 0, GameConfig.CANVAS.WIDTH, GameConfig.CANVAS.HEIGHT, 'rgba(0,0,0,0.5)');
+                // 注意：游戏画面应该在Game.js中先绘制，这里只添加暂停覆盖层
+                // 半透明黑色覆盖层
+                renderer.drawRect(0, 0, GameConfig.CANVAS.WIDTH, GameConfig.CANVAS.HEIGHT, 'rgba(0,0,0,0.7)');
+                
+                // 暂停文字
                 renderer.drawText('游戏暂停', 320, 400, 48, '#FFFFFF');
-                renderer.drawText('按 ESC 继续游戏', 320, 480, 24, '#FFFFFF');
+                
+                // 闪烁的继续提示
+                if (Math.floor(Date.now() / 500) % 2 === 0) {
+                    renderer.drawText('按 ESC 继续游戏', 320, 480, 24, '#00FF00');
+                }
             },
             exit: () => {
                 console.log('恢复游戏');

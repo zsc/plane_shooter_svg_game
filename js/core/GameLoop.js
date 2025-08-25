@@ -8,6 +8,8 @@ class GameLoop {
         this.lastTime = 0;
         this.deltaTime = 0;
         this.frameCount = 0;
+        this.totalFrameCount = 0;  // 总帧数，不会被重置
+        this.fpsFrameCount = 0;     // 用于FPS计算的帧数
         this.fps = 0;
         this.fpsUpdateTime = 0;
         this.accumulator = 0;
@@ -47,7 +49,8 @@ class GameLoop {
         this.isRunning = true;
         this.lastTime = performance.now();
         this.fpsUpdateTime = this.lastTime;
-        this.frameCount = 0;
+        this.fpsFrameCount = 0;
+        // 保持 totalFrameCount 和 frameCount 不重置
         
         console.log('游戏循环启动');
         requestAnimationFrame(this.loop);
@@ -125,6 +128,10 @@ class GameLoop {
         }
         this.performanceData.renderTime = performance.now() - renderStart;
         
+        // 更新帧计数
+        this.frameCount++;
+        this.totalFrameCount++;
+        
         // 更新FPS
         this.updateFPS(currentTime);
         
@@ -140,12 +147,12 @@ class GameLoop {
      * @param {number} currentTime - 当前时间戳
      */
     updateFPS(currentTime) {
-        this.frameCount++;
+        this.fpsFrameCount++;
         
         // 每秒更新一次FPS
         if (currentTime - this.fpsUpdateTime >= 1000) {
-            this.fps = Math.round(this.frameCount * 1000 / (currentTime - this.fpsUpdateTime));
-            this.frameCount = 0;
+            this.fps = Math.round(this.fpsFrameCount * 1000 / (currentTime - this.fpsUpdateTime));
+            this.fpsFrameCount = 0;
             this.fpsUpdateTime = currentTime;
             
             // 性能自适应
@@ -192,6 +199,22 @@ class GameLoop {
      */
     getDeltaTime() {
         return this.deltaTime / 1000;
+    }
+
+    /**
+     * 获取总帧数
+     * @returns {number} 总帧数
+     */
+    getTotalFrameCount() {
+        return this.totalFrameCount;
+    }
+
+    /**
+     * 获取当前帧数（用于游戏逻辑）
+     * @returns {number} 当前帧数
+     */
+    getFrameCount() {
+        return this.frameCount;
     }
 
     /**

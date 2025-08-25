@@ -15,6 +15,378 @@
 ### 1.1.1 渲染器核心设计
 
 #### 主渲染器类结构
+```
+
+## 1.3 粒子特效引擎
+
+### 1.3.1 粒子系统架构
+
+#### 粒子发射器
+```javascript
+class ParticleEmitter {
+    constructor(config) {
+        this.x = config.x || 0;
+        this.y = config.y || 0;
+        this.emissionRate = config.emissionRate || 10;  // 每秒发射粒子数
+        this.maxParticles = config.maxParticles || 1000;
+        this.particleLife = config.particleLife || 2000; // 毫秒
+        this.emitterLife = config.emitterLife || -1;     // -1表示永久
+        this.particles = [];
+        this.particlePool = [];  // 对象池
+        this.active = true;
+        this.emissionTimer = 0;
+        this.config = config;
+    }
+    
+    emit() {
+        if (!this.active) return;
+        
+        if (this.particles.length >= this.maxParticles) return;
+        
+        // 从对象池获取或创建新粒子
+        let particle = this.particlePool.pop();
+        if (!particle) {
+            particle = new Particle();
+        }
+        
+        // 初始化粒子属性
+        this.initParticle(particle);
+        this.particles.push(particle);
+    }
+    
+    initParticle(particle) {
+        // 位置初始化
+        particle.x = this.x + (Math.random() - 0.5) * this.config.spread;
+        particle.y = this.y;
+        
+        // 速度初始化
+        const angle = this.config.angle + (Math.random() - 0.5) * this.config.angleVariance;
+        const speed = this.config.speed + (Math.random() - 0.5) * this.config.speedVariance;
+        particle.vx = Math.cos(angle) * speed;
+        particle.vy = Math.sin(angle) * speed;
+        
+        // 生命周期
+        particle.life = this.particleLife;
+        particle.maxLife = this.particleLife;
+        
+        // 视觉属性
+        particle.color = this.config.color || '#FFFFFF';
+        particle.size = this.config.size || 4;
+        particle.alpha = 1;
+    }
+    
+    update(deltaTime) {
+        // 更新发射计时器
+        this.emissionTimer += deltaTime;
+        const emissionInterval = 1000 / this.emissionRate;
+        
+        while (this.emissionTimer >= emissionInterval) {
+            this.emit();
+            this.emissionTimer -= emissionInterval;
+        }
+        
+        // 更新所有粒子
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const particle = this.particles[i];
+            particle.update(deltaTime);
+            
+            if (particle.life <= 0) {
+                // 回收到对象池
+                this.particles.splice(i, 1);
+                this.particlePool.push(particle);
+            }
+        }
+    }
+}
+```
+
+#### 粒子类定义
+```javascript
+class Particle {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.ax = 0;  // 加速度
+        this.ay = 0;
+        this.size = 4;
+        this.color = '#FFFFFF';
+        this.alpha = 1;
+        this.rotation = 0;
+        this.rotationSpeed = 0;
+        this.life = 1000;
+        this.maxLife = 1000;
+        this.scale = 1;
+        this.texture = null;
+    }
+    
+    update(deltaTime) {
+        const dt = deltaTime / 1000; // 转换为秒
+        
+        // 物理更新
+        this.vx += this.ax * dt;
+        this.vy += this.ay * dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.rotation += this.rotationSpeed * dt;
+        
+        // 生命周期更新
+        this.life -= deltaTime;
+        const lifeRatio = this.life / this.maxLife;
+        
+        // 淡出效果
+        if (lifeRatio < 0.3) {
+            this.alpha = lifeRatio / 0.3;
+        }
+    }
+    
+    render(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        if (this.texture) {
+            // 绘制纹理粒子
+            const size = this.size * this.scale;
+            ctx.drawImage(this.texture, -size/2, -size/2, size, size);
+        } else {
+            // 绘制几何粒子
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size * this.scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+```
+
+### 1.3.2 粒子特效预设
+
+#### 爆炸特效
+```javascript
+class ExplosionEffect {
+    static create(x, y, size = 'medium') {
+        const configs = {
+            small: {
+                emissionRate: 100,
+                maxParticles: 30,
+                particleLife: 500,
+                speed: 200,
+                speedVariance: 100,
+                spread: 10,
+                size: 3,
+                color: ['#FF6B35', '#FFA500', '#FFFF00'],
+                gravity: 0
+            },
+            medium: {
+                emissionRate: 200,
+                maxParticles: 50,
+                particleLife: 800,
+                speed: 300,
+                speedVariance: 150,
+                spread: 20,
+                size: 5,
+                color: ['#FF4500', '#FF6347', '#FFA500'],
+                gravity: 100
+            },
+            large: {
+                emissionRate: 500,
+                maxParticles: 100,
+                particleLife: 1200,
+                speed: 400,
+                speedVariance: 200,
+                spread: 40,
+                size: 8,
+                color: ['#FF0000', '#FF4500', '#FFFF00'],
+                gravity: 200
+            }
+        };
+        
+        const config = configs[size];
+        const emitter = new ParticleEmitter({
+            x: x,
+            y: y,
+            ...config,
+            emitterLife: 100  // 短暂爆发
+        });
+        
+        return emitter;
+    }
+}
+```
+
+#### 推进器尾焰
+```javascript
+class ThrusterEffect {
+    static create(parent) {
+        return new ParticleEmitter({
+            x: parent.x,
+            y: parent.y + parent.height / 2,
+            emissionRate: 30,
+            maxParticles: 100,
+            particleLife: 400,
+            angle: Math.PI / 2,  // 向下
+            angleVariance: 0.3,
+            speed: 100,
+            speedVariance: 20,
+            size: 6,
+            color: ['#4169E1', '#00BFFF', '#FFFFFF'],
+            fadeOut: true,
+            shrink: true,
+            follow: parent  // 跟随父对象
+        });
+    }
+}
+```
+
+#### 子弹拖尾效果
+```javascript
+class BulletTrail {
+    static create(bullet) {
+        return new ParticleEmitter({
+            x: bullet.x,
+            y: bullet.y,
+            emissionRate: 60,
+            maxParticles: 20,
+            particleLife: 200,
+            angle: bullet.angle + Math.PI,  // 反向
+            angleVariance: 0.1,
+            speed: 50,
+            speedVariance: 10,
+            size: 2,
+            color: bullet.trailColor || '#FFFF00',
+            alpha: 0.6,
+            fadeOut: true,
+            follow: bullet
+        });
+    }
+}
+```
+
+### 1.3.3 粒子物理模拟
+
+#### 重力与风力
+```javascript
+class ParticlePhysics {
+    static applyGravity(particle, gravity = 9.8) {
+        particle.ay += gravity;
+    }
+    
+    static applyWind(particle, windX, windY) {
+        particle.ax += windX;
+        particle.ay += windY;
+    }
+    
+    static applyDrag(particle, dragCoefficient = 0.98) {
+        particle.vx *= dragCoefficient;
+        particle.vy *= dragCoefficient;
+    }
+    
+    static applyTurbulence(particle, intensity = 10) {
+        particle.vx += (Math.random() - 0.5) * intensity;
+        particle.vy += (Math.random() - 0.5) * intensity;
+    }
+}
+```
+
+#### 磁场吸引
+```javascript
+class MagneticField {
+    constructor(x, y, strength) {
+        this.x = x;
+        this.y = y;
+        this.strength = strength;
+        this.radius = 200;
+    }
+    
+    applyTo(particle) {
+        const dx = this.x - particle.x;
+        const dy = this.y - particle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.radius && distance > 0) {
+            const force = this.strength / (distance * distance);
+            particle.ax += (dx / distance) * force;
+            particle.ay += (dy / distance) * force;
+        }
+    }
+}
+```
+
+### 1.3.4 粒子渲染优化
+
+#### 批量渲染
+```javascript
+class ParticleBatchRenderer {
+    constructor(maxParticles = 10000) {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.particleData = new Float32Array(maxParticles * 6); // x,y,size,r,g,b
+    }
+    
+    renderBatch(particles, mainCtx) {
+        // 清空粒子画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 按颜色分组渲染
+        const groups = this.groupByColor(particles);
+        
+        for (const [color, group] of groups) {
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            
+            for (const particle of group) {
+                this.ctx.moveTo(particle.x + particle.size, particle.y);
+                this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            }
+            
+            this.ctx.fill();
+        }
+        
+        // 复制到主画布
+        mainCtx.drawImage(this.canvas, 0, 0);
+    }
+}
+```
+
+#### 粒子LOD（细节层次）
+```javascript
+class ParticleLOD {
+    static getDetailLevel(distance, particleCount) {
+        if (particleCount > 1000) {
+            // 高密度场景降级
+            return 'low';
+        } else if (distance > 500) {
+            // 远距离降级
+            return 'low';
+        } else if (distance > 200) {
+            return 'medium';
+        } else {
+            return 'high';
+        }
+    }
+    
+    static applyLOD(particle, level) {
+        switch(level) {
+            case 'low':
+                particle.skipFrames = 2;  // 隔帧更新
+                particle.useSimpleRender = true;
+                break;
+            case 'medium':
+                particle.skipFrames = 1;
+                particle.useSimpleRender = false;
+                break;
+            case 'high':
+                particle.skipFrames = 0;
+                particle.useSimpleRender = false;
+                break;
+        }
+    }
+}
 ```javascript
 class Renderer {
     constructor(config) {
@@ -30,6 +402,378 @@ class Renderer {
         this.frameBuffer = null;   // 离屏缓冲
         this.renderQueue = [];      // 渲染队列
         this.stats = new RenderStats();
+    }
+}
+```
+
+## 1.3 粒子特效引擎
+
+### 1.3.1 粒子系统架构
+
+#### 粒子发射器
+```javascript
+class ParticleEmitter {
+    constructor(config) {
+        this.x = config.x || 0;
+        this.y = config.y || 0;
+        this.emissionRate = config.emissionRate || 10;  // 每秒发射粒子数
+        this.maxParticles = config.maxParticles || 1000;
+        this.particleLife = config.particleLife || 2000; // 毫秒
+        this.emitterLife = config.emitterLife || -1;     // -1表示永久
+        this.particles = [];
+        this.particlePool = [];  // 对象池
+        this.active = true;
+        this.emissionTimer = 0;
+        this.config = config;
+    }
+    
+    emit() {
+        if (!this.active) return;
+        
+        if (this.particles.length >= this.maxParticles) return;
+        
+        // 从对象池获取或创建新粒子
+        let particle = this.particlePool.pop();
+        if (!particle) {
+            particle = new Particle();
+        }
+        
+        // 初始化粒子属性
+        this.initParticle(particle);
+        this.particles.push(particle);
+    }
+    
+    initParticle(particle) {
+        // 位置初始化
+        particle.x = this.x + (Math.random() - 0.5) * this.config.spread;
+        particle.y = this.y;
+        
+        // 速度初始化
+        const angle = this.config.angle + (Math.random() - 0.5) * this.config.angleVariance;
+        const speed = this.config.speed + (Math.random() - 0.5) * this.config.speedVariance;
+        particle.vx = Math.cos(angle) * speed;
+        particle.vy = Math.sin(angle) * speed;
+        
+        // 生命周期
+        particle.life = this.particleLife;
+        particle.maxLife = this.particleLife;
+        
+        // 视觉属性
+        particle.color = this.config.color || '#FFFFFF';
+        particle.size = this.config.size || 4;
+        particle.alpha = 1;
+    }
+    
+    update(deltaTime) {
+        // 更新发射计时器
+        this.emissionTimer += deltaTime;
+        const emissionInterval = 1000 / this.emissionRate;
+        
+        while (this.emissionTimer >= emissionInterval) {
+            this.emit();
+            this.emissionTimer -= emissionInterval;
+        }
+        
+        // 更新所有粒子
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const particle = this.particles[i];
+            particle.update(deltaTime);
+            
+            if (particle.life <= 0) {
+                // 回收到对象池
+                this.particles.splice(i, 1);
+                this.particlePool.push(particle);
+            }
+        }
+    }
+}
+```
+
+#### 粒子类定义
+```javascript
+class Particle {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.ax = 0;  // 加速度
+        this.ay = 0;
+        this.size = 4;
+        this.color = '#FFFFFF';
+        this.alpha = 1;
+        this.rotation = 0;
+        this.rotationSpeed = 0;
+        this.life = 1000;
+        this.maxLife = 1000;
+        this.scale = 1;
+        this.texture = null;
+    }
+    
+    update(deltaTime) {
+        const dt = deltaTime / 1000; // 转换为秒
+        
+        // 物理更新
+        this.vx += this.ax * dt;
+        this.vy += this.ay * dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.rotation += this.rotationSpeed * dt;
+        
+        // 生命周期更新
+        this.life -= deltaTime;
+        const lifeRatio = this.life / this.maxLife;
+        
+        // 淡出效果
+        if (lifeRatio < 0.3) {
+            this.alpha = lifeRatio / 0.3;
+        }
+    }
+    
+    render(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        if (this.texture) {
+            // 绘制纹理粒子
+            const size = this.size * this.scale;
+            ctx.drawImage(this.texture, -size/2, -size/2, size, size);
+        } else {
+            // 绘制几何粒子
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size * this.scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+```
+
+### 1.3.2 粒子特效预设
+
+#### 爆炸特效
+```javascript
+class ExplosionEffect {
+    static create(x, y, size = 'medium') {
+        const configs = {
+            small: {
+                emissionRate: 100,
+                maxParticles: 30,
+                particleLife: 500,
+                speed: 200,
+                speedVariance: 100,
+                spread: 10,
+                size: 3,
+                color: ['#FF6B35', '#FFA500', '#FFFF00'],
+                gravity: 0
+            },
+            medium: {
+                emissionRate: 200,
+                maxParticles: 50,
+                particleLife: 800,
+                speed: 300,
+                speedVariance: 150,
+                spread: 20,
+                size: 5,
+                color: ['#FF4500', '#FF6347', '#FFA500'],
+                gravity: 100
+            },
+            large: {
+                emissionRate: 500,
+                maxParticles: 100,
+                particleLife: 1200,
+                speed: 400,
+                speedVariance: 200,
+                spread: 40,
+                size: 8,
+                color: ['#FF0000', '#FF4500', '#FFFF00'],
+                gravity: 200
+            }
+        };
+        
+        const config = configs[size];
+        const emitter = new ParticleEmitter({
+            x: x,
+            y: y,
+            ...config,
+            emitterLife: 100  // 短暂爆发
+        });
+        
+        return emitter;
+    }
+}
+```
+
+#### 推进器尾焰
+```javascript
+class ThrusterEffect {
+    static create(parent) {
+        return new ParticleEmitter({
+            x: parent.x,
+            y: parent.y + parent.height / 2,
+            emissionRate: 30,
+            maxParticles: 100,
+            particleLife: 400,
+            angle: Math.PI / 2,  // 向下
+            angleVariance: 0.3,
+            speed: 100,
+            speedVariance: 20,
+            size: 6,
+            color: ['#4169E1', '#00BFFF', '#FFFFFF'],
+            fadeOut: true,
+            shrink: true,
+            follow: parent  // 跟随父对象
+        });
+    }
+}
+```
+
+#### 子弹拖尾效果
+```javascript
+class BulletTrail {
+    static create(bullet) {
+        return new ParticleEmitter({
+            x: bullet.x,
+            y: bullet.y,
+            emissionRate: 60,
+            maxParticles: 20,
+            particleLife: 200,
+            angle: bullet.angle + Math.PI,  // 反向
+            angleVariance: 0.1,
+            speed: 50,
+            speedVariance: 10,
+            size: 2,
+            color: bullet.trailColor || '#FFFF00',
+            alpha: 0.6,
+            fadeOut: true,
+            follow: bullet
+        });
+    }
+}
+```
+
+### 1.3.3 粒子物理模拟
+
+#### 重力与风力
+```javascript
+class ParticlePhysics {
+    static applyGravity(particle, gravity = 9.8) {
+        particle.ay += gravity;
+    }
+    
+    static applyWind(particle, windX, windY) {
+        particle.ax += windX;
+        particle.ay += windY;
+    }
+    
+    static applyDrag(particle, dragCoefficient = 0.98) {
+        particle.vx *= dragCoefficient;
+        particle.vy *= dragCoefficient;
+    }
+    
+    static applyTurbulence(particle, intensity = 10) {
+        particle.vx += (Math.random() - 0.5) * intensity;
+        particle.vy += (Math.random() - 0.5) * intensity;
+    }
+}
+```
+
+#### 磁场吸引
+```javascript
+class MagneticField {
+    constructor(x, y, strength) {
+        this.x = x;
+        this.y = y;
+        this.strength = strength;
+        this.radius = 200;
+    }
+    
+    applyTo(particle) {
+        const dx = this.x - particle.x;
+        const dy = this.y - particle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.radius && distance > 0) {
+            const force = this.strength / (distance * distance);
+            particle.ax += (dx / distance) * force;
+            particle.ay += (dy / distance) * force;
+        }
+    }
+}
+```
+
+### 1.3.4 粒子渲染优化
+
+#### 批量渲染
+```javascript
+class ParticleBatchRenderer {
+    constructor(maxParticles = 10000) {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.particleData = new Float32Array(maxParticles * 6); // x,y,size,r,g,b
+    }
+    
+    renderBatch(particles, mainCtx) {
+        // 清空粒子画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 按颜色分组渲染
+        const groups = this.groupByColor(particles);
+        
+        for (const [color, group] of groups) {
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            
+            for (const particle of group) {
+                this.ctx.moveTo(particle.x + particle.size, particle.y);
+                this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            }
+            
+            this.ctx.fill();
+        }
+        
+        // 复制到主画布
+        mainCtx.drawImage(this.canvas, 0, 0);
+    }
+}
+```
+
+#### 粒子LOD（细节层次）
+```javascript
+class ParticleLOD {
+    static getDetailLevel(distance, particleCount) {
+        if (particleCount > 1000) {
+            // 高密度场景降级
+            return 'low';
+        } else if (distance > 500) {
+            // 远距离降级
+            return 'low';
+        } else if (distance > 200) {
+            return 'medium';
+        } else {
+            return 'high';
+        }
+    }
+    
+    static applyLOD(particle, level) {
+        switch(level) {
+            case 'low':
+                particle.skipFrames = 2;  // 隔帧更新
+                particle.useSimpleRender = true;
+                break;
+            case 'medium':
+                particle.skipFrames = 1;
+                particle.useSimpleRender = false;
+                break;
+            case 'high':
+                particle.skipFrames = 0;
+                particle.useSimpleRender = false;
+                break;
+        }
     }
 }
 ```
@@ -65,6 +809,378 @@ class Renderer {
 - 单位：像素
 
 #### 相机系统
+```
+
+## 1.3 粒子特效引擎
+
+### 1.3.1 粒子系统架构
+
+#### 粒子发射器
+```javascript
+class ParticleEmitter {
+    constructor(config) {
+        this.x = config.x || 0;
+        this.y = config.y || 0;
+        this.emissionRate = config.emissionRate || 10;  // 每秒发射粒子数
+        this.maxParticles = config.maxParticles || 1000;
+        this.particleLife = config.particleLife || 2000; // 毫秒
+        this.emitterLife = config.emitterLife || -1;     // -1表示永久
+        this.particles = [];
+        this.particlePool = [];  // 对象池
+        this.active = true;
+        this.emissionTimer = 0;
+        this.config = config;
+    }
+    
+    emit() {
+        if (!this.active) return;
+        
+        if (this.particles.length >= this.maxParticles) return;
+        
+        // 从对象池获取或创建新粒子
+        let particle = this.particlePool.pop();
+        if (!particle) {
+            particle = new Particle();
+        }
+        
+        // 初始化粒子属性
+        this.initParticle(particle);
+        this.particles.push(particle);
+    }
+    
+    initParticle(particle) {
+        // 位置初始化
+        particle.x = this.x + (Math.random() - 0.5) * this.config.spread;
+        particle.y = this.y;
+        
+        // 速度初始化
+        const angle = this.config.angle + (Math.random() - 0.5) * this.config.angleVariance;
+        const speed = this.config.speed + (Math.random() - 0.5) * this.config.speedVariance;
+        particle.vx = Math.cos(angle) * speed;
+        particle.vy = Math.sin(angle) * speed;
+        
+        // 生命周期
+        particle.life = this.particleLife;
+        particle.maxLife = this.particleLife;
+        
+        // 视觉属性
+        particle.color = this.config.color || '#FFFFFF';
+        particle.size = this.config.size || 4;
+        particle.alpha = 1;
+    }
+    
+    update(deltaTime) {
+        // 更新发射计时器
+        this.emissionTimer += deltaTime;
+        const emissionInterval = 1000 / this.emissionRate;
+        
+        while (this.emissionTimer >= emissionInterval) {
+            this.emit();
+            this.emissionTimer -= emissionInterval;
+        }
+        
+        // 更新所有粒子
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const particle = this.particles[i];
+            particle.update(deltaTime);
+            
+            if (particle.life <= 0) {
+                // 回收到对象池
+                this.particles.splice(i, 1);
+                this.particlePool.push(particle);
+            }
+        }
+    }
+}
+```
+
+#### 粒子类定义
+```javascript
+class Particle {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.ax = 0;  // 加速度
+        this.ay = 0;
+        this.size = 4;
+        this.color = '#FFFFFF';
+        this.alpha = 1;
+        this.rotation = 0;
+        this.rotationSpeed = 0;
+        this.life = 1000;
+        this.maxLife = 1000;
+        this.scale = 1;
+        this.texture = null;
+    }
+    
+    update(deltaTime) {
+        const dt = deltaTime / 1000; // 转换为秒
+        
+        // 物理更新
+        this.vx += this.ax * dt;
+        this.vy += this.ay * dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.rotation += this.rotationSpeed * dt;
+        
+        // 生命周期更新
+        this.life -= deltaTime;
+        const lifeRatio = this.life / this.maxLife;
+        
+        // 淡出效果
+        if (lifeRatio < 0.3) {
+            this.alpha = lifeRatio / 0.3;
+        }
+    }
+    
+    render(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        if (this.texture) {
+            // 绘制纹理粒子
+            const size = this.size * this.scale;
+            ctx.drawImage(this.texture, -size/2, -size/2, size, size);
+        } else {
+            // 绘制几何粒子
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size * this.scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+```
+
+### 1.3.2 粒子特效预设
+
+#### 爆炸特效
+```javascript
+class ExplosionEffect {
+    static create(x, y, size = 'medium') {
+        const configs = {
+            small: {
+                emissionRate: 100,
+                maxParticles: 30,
+                particleLife: 500,
+                speed: 200,
+                speedVariance: 100,
+                spread: 10,
+                size: 3,
+                color: ['#FF6B35', '#FFA500', '#FFFF00'],
+                gravity: 0
+            },
+            medium: {
+                emissionRate: 200,
+                maxParticles: 50,
+                particleLife: 800,
+                speed: 300,
+                speedVariance: 150,
+                spread: 20,
+                size: 5,
+                color: ['#FF4500', '#FF6347', '#FFA500'],
+                gravity: 100
+            },
+            large: {
+                emissionRate: 500,
+                maxParticles: 100,
+                particleLife: 1200,
+                speed: 400,
+                speedVariance: 200,
+                spread: 40,
+                size: 8,
+                color: ['#FF0000', '#FF4500', '#FFFF00'],
+                gravity: 200
+            }
+        };
+        
+        const config = configs[size];
+        const emitter = new ParticleEmitter({
+            x: x,
+            y: y,
+            ...config,
+            emitterLife: 100  // 短暂爆发
+        });
+        
+        return emitter;
+    }
+}
+```
+
+#### 推进器尾焰
+```javascript
+class ThrusterEffect {
+    static create(parent) {
+        return new ParticleEmitter({
+            x: parent.x,
+            y: parent.y + parent.height / 2,
+            emissionRate: 30,
+            maxParticles: 100,
+            particleLife: 400,
+            angle: Math.PI / 2,  // 向下
+            angleVariance: 0.3,
+            speed: 100,
+            speedVariance: 20,
+            size: 6,
+            color: ['#4169E1', '#00BFFF', '#FFFFFF'],
+            fadeOut: true,
+            shrink: true,
+            follow: parent  // 跟随父对象
+        });
+    }
+}
+```
+
+#### 子弹拖尾效果
+```javascript
+class BulletTrail {
+    static create(bullet) {
+        return new ParticleEmitter({
+            x: bullet.x,
+            y: bullet.y,
+            emissionRate: 60,
+            maxParticles: 20,
+            particleLife: 200,
+            angle: bullet.angle + Math.PI,  // 反向
+            angleVariance: 0.1,
+            speed: 50,
+            speedVariance: 10,
+            size: 2,
+            color: bullet.trailColor || '#FFFF00',
+            alpha: 0.6,
+            fadeOut: true,
+            follow: bullet
+        });
+    }
+}
+```
+
+### 1.3.3 粒子物理模拟
+
+#### 重力与风力
+```javascript
+class ParticlePhysics {
+    static applyGravity(particle, gravity = 9.8) {
+        particle.ay += gravity;
+    }
+    
+    static applyWind(particle, windX, windY) {
+        particle.ax += windX;
+        particle.ay += windY;
+    }
+    
+    static applyDrag(particle, dragCoefficient = 0.98) {
+        particle.vx *= dragCoefficient;
+        particle.vy *= dragCoefficient;
+    }
+    
+    static applyTurbulence(particle, intensity = 10) {
+        particle.vx += (Math.random() - 0.5) * intensity;
+        particle.vy += (Math.random() - 0.5) * intensity;
+    }
+}
+```
+
+#### 磁场吸引
+```javascript
+class MagneticField {
+    constructor(x, y, strength) {
+        this.x = x;
+        this.y = y;
+        this.strength = strength;
+        this.radius = 200;
+    }
+    
+    applyTo(particle) {
+        const dx = this.x - particle.x;
+        const dy = this.y - particle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.radius && distance > 0) {
+            const force = this.strength / (distance * distance);
+            particle.ax += (dx / distance) * force;
+            particle.ay += (dy / distance) * force;
+        }
+    }
+}
+```
+
+### 1.3.4 粒子渲染优化
+
+#### 批量渲染
+```javascript
+class ParticleBatchRenderer {
+    constructor(maxParticles = 10000) {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.particleData = new Float32Array(maxParticles * 6); // x,y,size,r,g,b
+    }
+    
+    renderBatch(particles, mainCtx) {
+        // 清空粒子画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 按颜色分组渲染
+        const groups = this.groupByColor(particles);
+        
+        for (const [color, group] of groups) {
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            
+            for (const particle of group) {
+                this.ctx.moveTo(particle.x + particle.size, particle.y);
+                this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            }
+            
+            this.ctx.fill();
+        }
+        
+        // 复制到主画布
+        mainCtx.drawImage(this.canvas, 0, 0);
+    }
+}
+```
+
+#### 粒子LOD（细节层次）
+```javascript
+class ParticleLOD {
+    static getDetailLevel(distance, particleCount) {
+        if (particleCount > 1000) {
+            // 高密度场景降级
+            return 'low';
+        } else if (distance > 500) {
+            // 远距离降级
+            return 'low';
+        } else if (distance > 200) {
+            return 'medium';
+        } else {
+            return 'high';
+        }
+    }
+    
+    static applyLOD(particle, level) {
+        switch(level) {
+            case 'low':
+                particle.skipFrames = 2;  // 隔帧更新
+                particle.useSimpleRender = true;
+                break;
+            case 'medium':
+                particle.skipFrames = 1;
+                particle.useSimpleRender = false;
+                break;
+            case 'high':
+                particle.skipFrames = 0;
+                particle.useSimpleRender = false;
+                break;
+        }
+    }
+}
 ```javascript
 class Camera {
     constructor() {
@@ -92,6 +1208,378 @@ class Camera {
 }
 ```
 
+## 1.3 粒子特效引擎
+
+### 1.3.1 粒子系统架构
+
+#### 粒子发射器
+```javascript
+class ParticleEmitter {
+    constructor(config) {
+        this.x = config.x || 0;
+        this.y = config.y || 0;
+        this.emissionRate = config.emissionRate || 10;  // 每秒发射粒子数
+        this.maxParticles = config.maxParticles || 1000;
+        this.particleLife = config.particleLife || 2000; // 毫秒
+        this.emitterLife = config.emitterLife || -1;     // -1表示永久
+        this.particles = [];
+        this.particlePool = [];  // 对象池
+        this.active = true;
+        this.emissionTimer = 0;
+        this.config = config;
+    }
+    
+    emit() {
+        if (!this.active) return;
+        
+        if (this.particles.length >= this.maxParticles) return;
+        
+        // 从对象池获取或创建新粒子
+        let particle = this.particlePool.pop();
+        if (!particle) {
+            particle = new Particle();
+        }
+        
+        // 初始化粒子属性
+        this.initParticle(particle);
+        this.particles.push(particle);
+    }
+    
+    initParticle(particle) {
+        // 位置初始化
+        particle.x = this.x + (Math.random() - 0.5) * this.config.spread;
+        particle.y = this.y;
+        
+        // 速度初始化
+        const angle = this.config.angle + (Math.random() - 0.5) * this.config.angleVariance;
+        const speed = this.config.speed + (Math.random() - 0.5) * this.config.speedVariance;
+        particle.vx = Math.cos(angle) * speed;
+        particle.vy = Math.sin(angle) * speed;
+        
+        // 生命周期
+        particle.life = this.particleLife;
+        particle.maxLife = this.particleLife;
+        
+        // 视觉属性
+        particle.color = this.config.color || '#FFFFFF';
+        particle.size = this.config.size || 4;
+        particle.alpha = 1;
+    }
+    
+    update(deltaTime) {
+        // 更新发射计时器
+        this.emissionTimer += deltaTime;
+        const emissionInterval = 1000 / this.emissionRate;
+        
+        while (this.emissionTimer >= emissionInterval) {
+            this.emit();
+            this.emissionTimer -= emissionInterval;
+        }
+        
+        // 更新所有粒子
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const particle = this.particles[i];
+            particle.update(deltaTime);
+            
+            if (particle.life <= 0) {
+                // 回收到对象池
+                this.particles.splice(i, 1);
+                this.particlePool.push(particle);
+            }
+        }
+    }
+}
+```
+
+#### 粒子类定义
+```javascript
+class Particle {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.ax = 0;  // 加速度
+        this.ay = 0;
+        this.size = 4;
+        this.color = '#FFFFFF';
+        this.alpha = 1;
+        this.rotation = 0;
+        this.rotationSpeed = 0;
+        this.life = 1000;
+        this.maxLife = 1000;
+        this.scale = 1;
+        this.texture = null;
+    }
+    
+    update(deltaTime) {
+        const dt = deltaTime / 1000; // 转换为秒
+        
+        // 物理更新
+        this.vx += this.ax * dt;
+        this.vy += this.ay * dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.rotation += this.rotationSpeed * dt;
+        
+        // 生命周期更新
+        this.life -= deltaTime;
+        const lifeRatio = this.life / this.maxLife;
+        
+        // 淡出效果
+        if (lifeRatio < 0.3) {
+            this.alpha = lifeRatio / 0.3;
+        }
+    }
+    
+    render(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        if (this.texture) {
+            // 绘制纹理粒子
+            const size = this.size * this.scale;
+            ctx.drawImage(this.texture, -size/2, -size/2, size, size);
+        } else {
+            // 绘制几何粒子
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size * this.scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+```
+
+### 1.3.2 粒子特效预设
+
+#### 爆炸特效
+```javascript
+class ExplosionEffect {
+    static create(x, y, size = 'medium') {
+        const configs = {
+            small: {
+                emissionRate: 100,
+                maxParticles: 30,
+                particleLife: 500,
+                speed: 200,
+                speedVariance: 100,
+                spread: 10,
+                size: 3,
+                color: ['#FF6B35', '#FFA500', '#FFFF00'],
+                gravity: 0
+            },
+            medium: {
+                emissionRate: 200,
+                maxParticles: 50,
+                particleLife: 800,
+                speed: 300,
+                speedVariance: 150,
+                spread: 20,
+                size: 5,
+                color: ['#FF4500', '#FF6347', '#FFA500'],
+                gravity: 100
+            },
+            large: {
+                emissionRate: 500,
+                maxParticles: 100,
+                particleLife: 1200,
+                speed: 400,
+                speedVariance: 200,
+                spread: 40,
+                size: 8,
+                color: ['#FF0000', '#FF4500', '#FFFF00'],
+                gravity: 200
+            }
+        };
+        
+        const config = configs[size];
+        const emitter = new ParticleEmitter({
+            x: x,
+            y: y,
+            ...config,
+            emitterLife: 100  // 短暂爆发
+        });
+        
+        return emitter;
+    }
+}
+```
+
+#### 推进器尾焰
+```javascript
+class ThrusterEffect {
+    static create(parent) {
+        return new ParticleEmitter({
+            x: parent.x,
+            y: parent.y + parent.height / 2,
+            emissionRate: 30,
+            maxParticles: 100,
+            particleLife: 400,
+            angle: Math.PI / 2,  // 向下
+            angleVariance: 0.3,
+            speed: 100,
+            speedVariance: 20,
+            size: 6,
+            color: ['#4169E1', '#00BFFF', '#FFFFFF'],
+            fadeOut: true,
+            shrink: true,
+            follow: parent  // 跟随父对象
+        });
+    }
+}
+```
+
+#### 子弹拖尾效果
+```javascript
+class BulletTrail {
+    static create(bullet) {
+        return new ParticleEmitter({
+            x: bullet.x,
+            y: bullet.y,
+            emissionRate: 60,
+            maxParticles: 20,
+            particleLife: 200,
+            angle: bullet.angle + Math.PI,  // 反向
+            angleVariance: 0.1,
+            speed: 50,
+            speedVariance: 10,
+            size: 2,
+            color: bullet.trailColor || '#FFFF00',
+            alpha: 0.6,
+            fadeOut: true,
+            follow: bullet
+        });
+    }
+}
+```
+
+### 1.3.3 粒子物理模拟
+
+#### 重力与风力
+```javascript
+class ParticlePhysics {
+    static applyGravity(particle, gravity = 9.8) {
+        particle.ay += gravity;
+    }
+    
+    static applyWind(particle, windX, windY) {
+        particle.ax += windX;
+        particle.ay += windY;
+    }
+    
+    static applyDrag(particle, dragCoefficient = 0.98) {
+        particle.vx *= dragCoefficient;
+        particle.vy *= dragCoefficient;
+    }
+    
+    static applyTurbulence(particle, intensity = 10) {
+        particle.vx += (Math.random() - 0.5) * intensity;
+        particle.vy += (Math.random() - 0.5) * intensity;
+    }
+}
+```
+
+#### 磁场吸引
+```javascript
+class MagneticField {
+    constructor(x, y, strength) {
+        this.x = x;
+        this.y = y;
+        this.strength = strength;
+        this.radius = 200;
+    }
+    
+    applyTo(particle) {
+        const dx = this.x - particle.x;
+        const dy = this.y - particle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.radius && distance > 0) {
+            const force = this.strength / (distance * distance);
+            particle.ax += (dx / distance) * force;
+            particle.ay += (dy / distance) * force;
+        }
+    }
+}
+```
+
+### 1.3.4 粒子渲染优化
+
+#### 批量渲染
+```javascript
+class ParticleBatchRenderer {
+    constructor(maxParticles = 10000) {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.particleData = new Float32Array(maxParticles * 6); // x,y,size,r,g,b
+    }
+    
+    renderBatch(particles, mainCtx) {
+        // 清空粒子画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 按颜色分组渲染
+        const groups = this.groupByColor(particles);
+        
+        for (const [color, group] of groups) {
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            
+            for (const particle of group) {
+                this.ctx.moveTo(particle.x + particle.size, particle.y);
+                this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            }
+            
+            this.ctx.fill();
+        }
+        
+        // 复制到主画布
+        mainCtx.drawImage(this.canvas, 0, 0);
+    }
+}
+```
+
+#### 粒子LOD（细节层次）
+```javascript
+class ParticleLOD {
+    static getDetailLevel(distance, particleCount) {
+        if (particleCount > 1000) {
+            // 高密度场景降级
+            return 'low';
+        } else if (distance > 500) {
+            // 远距离降级
+            return 'low';
+        } else if (distance > 200) {
+            return 'medium';
+        } else {
+            return 'high';
+        }
+    }
+    
+    static applyLOD(particle, level) {
+        switch(level) {
+            case 'low':
+                particle.skipFrames = 2;  // 隔帧更新
+                particle.useSimpleRender = true;
+                break;
+            case 'medium':
+                particle.skipFrames = 1;
+                particle.useSimpleRender = false;
+                break;
+            case 'high':
+                particle.skipFrames = 0;
+                particle.useSimpleRender = false;
+                break;
+        }
+    }
+}
+```
+
 ### 1.1.3 渲染批处理优化
 
 #### 批处理策略
@@ -100,6 +1588,378 @@ class Camera {
 - **状态批处理**：最小化Canvas状态切换
 
 #### 绘制调用优化
+```
+
+## 1.3 粒子特效引擎
+
+### 1.3.1 粒子系统架构
+
+#### 粒子发射器
+```javascript
+class ParticleEmitter {
+    constructor(config) {
+        this.x = config.x || 0;
+        this.y = config.y || 0;
+        this.emissionRate = config.emissionRate || 10;  // 每秒发射粒子数
+        this.maxParticles = config.maxParticles || 1000;
+        this.particleLife = config.particleLife || 2000; // 毫秒
+        this.emitterLife = config.emitterLife || -1;     // -1表示永久
+        this.particles = [];
+        this.particlePool = [];  // 对象池
+        this.active = true;
+        this.emissionTimer = 0;
+        this.config = config;
+    }
+    
+    emit() {
+        if (!this.active) return;
+        
+        if (this.particles.length >= this.maxParticles) return;
+        
+        // 从对象池获取或创建新粒子
+        let particle = this.particlePool.pop();
+        if (!particle) {
+            particle = new Particle();
+        }
+        
+        // 初始化粒子属性
+        this.initParticle(particle);
+        this.particles.push(particle);
+    }
+    
+    initParticle(particle) {
+        // 位置初始化
+        particle.x = this.x + (Math.random() - 0.5) * this.config.spread;
+        particle.y = this.y;
+        
+        // 速度初始化
+        const angle = this.config.angle + (Math.random() - 0.5) * this.config.angleVariance;
+        const speed = this.config.speed + (Math.random() - 0.5) * this.config.speedVariance;
+        particle.vx = Math.cos(angle) * speed;
+        particle.vy = Math.sin(angle) * speed;
+        
+        // 生命周期
+        particle.life = this.particleLife;
+        particle.maxLife = this.particleLife;
+        
+        // 视觉属性
+        particle.color = this.config.color || '#FFFFFF';
+        particle.size = this.config.size || 4;
+        particle.alpha = 1;
+    }
+    
+    update(deltaTime) {
+        // 更新发射计时器
+        this.emissionTimer += deltaTime;
+        const emissionInterval = 1000 / this.emissionRate;
+        
+        while (this.emissionTimer >= emissionInterval) {
+            this.emit();
+            this.emissionTimer -= emissionInterval;
+        }
+        
+        // 更新所有粒子
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const particle = this.particles[i];
+            particle.update(deltaTime);
+            
+            if (particle.life <= 0) {
+                // 回收到对象池
+                this.particles.splice(i, 1);
+                this.particlePool.push(particle);
+            }
+        }
+    }
+}
+```
+
+#### 粒子类定义
+```javascript
+class Particle {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.ax = 0;  // 加速度
+        this.ay = 0;
+        this.size = 4;
+        this.color = '#FFFFFF';
+        this.alpha = 1;
+        this.rotation = 0;
+        this.rotationSpeed = 0;
+        this.life = 1000;
+        this.maxLife = 1000;
+        this.scale = 1;
+        this.texture = null;
+    }
+    
+    update(deltaTime) {
+        const dt = deltaTime / 1000; // 转换为秒
+        
+        // 物理更新
+        this.vx += this.ax * dt;
+        this.vy += this.ay * dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.rotation += this.rotationSpeed * dt;
+        
+        // 生命周期更新
+        this.life -= deltaTime;
+        const lifeRatio = this.life / this.maxLife;
+        
+        // 淡出效果
+        if (lifeRatio < 0.3) {
+            this.alpha = lifeRatio / 0.3;
+        }
+    }
+    
+    render(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        if (this.texture) {
+            // 绘制纹理粒子
+            const size = this.size * this.scale;
+            ctx.drawImage(this.texture, -size/2, -size/2, size, size);
+        } else {
+            // 绘制几何粒子
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size * this.scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+```
+
+### 1.3.2 粒子特效预设
+
+#### 爆炸特效
+```javascript
+class ExplosionEffect {
+    static create(x, y, size = 'medium') {
+        const configs = {
+            small: {
+                emissionRate: 100,
+                maxParticles: 30,
+                particleLife: 500,
+                speed: 200,
+                speedVariance: 100,
+                spread: 10,
+                size: 3,
+                color: ['#FF6B35', '#FFA500', '#FFFF00'],
+                gravity: 0
+            },
+            medium: {
+                emissionRate: 200,
+                maxParticles: 50,
+                particleLife: 800,
+                speed: 300,
+                speedVariance: 150,
+                spread: 20,
+                size: 5,
+                color: ['#FF4500', '#FF6347', '#FFA500'],
+                gravity: 100
+            },
+            large: {
+                emissionRate: 500,
+                maxParticles: 100,
+                particleLife: 1200,
+                speed: 400,
+                speedVariance: 200,
+                spread: 40,
+                size: 8,
+                color: ['#FF0000', '#FF4500', '#FFFF00'],
+                gravity: 200
+            }
+        };
+        
+        const config = configs[size];
+        const emitter = new ParticleEmitter({
+            x: x,
+            y: y,
+            ...config,
+            emitterLife: 100  // 短暂爆发
+        });
+        
+        return emitter;
+    }
+}
+```
+
+#### 推进器尾焰
+```javascript
+class ThrusterEffect {
+    static create(parent) {
+        return new ParticleEmitter({
+            x: parent.x,
+            y: parent.y + parent.height / 2,
+            emissionRate: 30,
+            maxParticles: 100,
+            particleLife: 400,
+            angle: Math.PI / 2,  // 向下
+            angleVariance: 0.3,
+            speed: 100,
+            speedVariance: 20,
+            size: 6,
+            color: ['#4169E1', '#00BFFF', '#FFFFFF'],
+            fadeOut: true,
+            shrink: true,
+            follow: parent  // 跟随父对象
+        });
+    }
+}
+```
+
+#### 子弹拖尾效果
+```javascript
+class BulletTrail {
+    static create(bullet) {
+        return new ParticleEmitter({
+            x: bullet.x,
+            y: bullet.y,
+            emissionRate: 60,
+            maxParticles: 20,
+            particleLife: 200,
+            angle: bullet.angle + Math.PI,  // 反向
+            angleVariance: 0.1,
+            speed: 50,
+            speedVariance: 10,
+            size: 2,
+            color: bullet.trailColor || '#FFFF00',
+            alpha: 0.6,
+            fadeOut: true,
+            follow: bullet
+        });
+    }
+}
+```
+
+### 1.3.3 粒子物理模拟
+
+#### 重力与风力
+```javascript
+class ParticlePhysics {
+    static applyGravity(particle, gravity = 9.8) {
+        particle.ay += gravity;
+    }
+    
+    static applyWind(particle, windX, windY) {
+        particle.ax += windX;
+        particle.ay += windY;
+    }
+    
+    static applyDrag(particle, dragCoefficient = 0.98) {
+        particle.vx *= dragCoefficient;
+        particle.vy *= dragCoefficient;
+    }
+    
+    static applyTurbulence(particle, intensity = 10) {
+        particle.vx += (Math.random() - 0.5) * intensity;
+        particle.vy += (Math.random() - 0.5) * intensity;
+    }
+}
+```
+
+#### 磁场吸引
+```javascript
+class MagneticField {
+    constructor(x, y, strength) {
+        this.x = x;
+        this.y = y;
+        this.strength = strength;
+        this.radius = 200;
+    }
+    
+    applyTo(particle) {
+        const dx = this.x - particle.x;
+        const dy = this.y - particle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.radius && distance > 0) {
+            const force = this.strength / (distance * distance);
+            particle.ax += (dx / distance) * force;
+            particle.ay += (dy / distance) * force;
+        }
+    }
+}
+```
+
+### 1.3.4 粒子渲染优化
+
+#### 批量渲染
+```javascript
+class ParticleBatchRenderer {
+    constructor(maxParticles = 10000) {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.particleData = new Float32Array(maxParticles * 6); // x,y,size,r,g,b
+    }
+    
+    renderBatch(particles, mainCtx) {
+        // 清空粒子画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 按颜色分组渲染
+        const groups = this.groupByColor(particles);
+        
+        for (const [color, group] of groups) {
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            
+            for (const particle of group) {
+                this.ctx.moveTo(particle.x + particle.size, particle.y);
+                this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            }
+            
+            this.ctx.fill();
+        }
+        
+        // 复制到主画布
+        mainCtx.drawImage(this.canvas, 0, 0);
+    }
+}
+```
+
+#### 粒子LOD（细节层次）
+```javascript
+class ParticleLOD {
+    static getDetailLevel(distance, particleCount) {
+        if (particleCount > 1000) {
+            // 高密度场景降级
+            return 'low';
+        } else if (distance > 500) {
+            // 远距离降级
+            return 'low';
+        } else if (distance > 200) {
+            return 'medium';
+        } else {
+            return 'high';
+        }
+    }
+    
+    static applyLOD(particle, level) {
+        switch(level) {
+            case 'low':
+                particle.skipFrames = 2;  // 隔帧更新
+                particle.useSimpleRender = true;
+                break;
+            case 'medium':
+                particle.skipFrames = 1;
+                particle.useSimpleRender = false;
+                break;
+            case 'high':
+                particle.skipFrames = 0;
+                particle.useSimpleRender = false;
+                break;
+        }
+    }
+}
 ```javascript
 class BatchRenderer {
     constructor(maxBatchSize = 1000) {
@@ -125,9 +1985,753 @@ class BatchRenderer {
 }
 ```
 
+## 1.3 粒子特效引擎
+
+### 1.3.1 粒子系统架构
+
+#### 粒子发射器
+```javascript
+class ParticleEmitter {
+    constructor(config) {
+        this.x = config.x || 0;
+        this.y = config.y || 0;
+        this.emissionRate = config.emissionRate || 10;  // 每秒发射粒子数
+        this.maxParticles = config.maxParticles || 1000;
+        this.particleLife = config.particleLife || 2000; // 毫秒
+        this.emitterLife = config.emitterLife || -1;     // -1表示永久
+        this.particles = [];
+        this.particlePool = [];  // 对象池
+        this.active = true;
+        this.emissionTimer = 0;
+        this.config = config;
+    }
+    
+    emit() {
+        if (!this.active) return;
+        
+        if (this.particles.length >= this.maxParticles) return;
+        
+        // 从对象池获取或创建新粒子
+        let particle = this.particlePool.pop();
+        if (!particle) {
+            particle = new Particle();
+        }
+        
+        // 初始化粒子属性
+        this.initParticle(particle);
+        this.particles.push(particle);
+    }
+    
+    initParticle(particle) {
+        // 位置初始化
+        particle.x = this.x + (Math.random() - 0.5) * this.config.spread;
+        particle.y = this.y;
+        
+        // 速度初始化
+        const angle = this.config.angle + (Math.random() - 0.5) * this.config.angleVariance;
+        const speed = this.config.speed + (Math.random() - 0.5) * this.config.speedVariance;
+        particle.vx = Math.cos(angle) * speed;
+        particle.vy = Math.sin(angle) * speed;
+        
+        // 生命周期
+        particle.life = this.particleLife;
+        particle.maxLife = this.particleLife;
+        
+        // 视觉属性
+        particle.color = this.config.color || '#FFFFFF';
+        particle.size = this.config.size || 4;
+        particle.alpha = 1;
+    }
+    
+    update(deltaTime) {
+        // 更新发射计时器
+        this.emissionTimer += deltaTime;
+        const emissionInterval = 1000 / this.emissionRate;
+        
+        while (this.emissionTimer >= emissionInterval) {
+            this.emit();
+            this.emissionTimer -= emissionInterval;
+        }
+        
+        // 更新所有粒子
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const particle = this.particles[i];
+            particle.update(deltaTime);
+            
+            if (particle.life <= 0) {
+                // 回收到对象池
+                this.particles.splice(i, 1);
+                this.particlePool.push(particle);
+            }
+        }
+    }
+}
+```
+
+#### 粒子类定义
+```javascript
+class Particle {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.ax = 0;  // 加速度
+        this.ay = 0;
+        this.size = 4;
+        this.color = '#FFFFFF';
+        this.alpha = 1;
+        this.rotation = 0;
+        this.rotationSpeed = 0;
+        this.life = 1000;
+        this.maxLife = 1000;
+        this.scale = 1;
+        this.texture = null;
+    }
+    
+    update(deltaTime) {
+        const dt = deltaTime / 1000; // 转换为秒
+        
+        // 物理更新
+        this.vx += this.ax * dt;
+        this.vy += this.ay * dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.rotation += this.rotationSpeed * dt;
+        
+        // 生命周期更新
+        this.life -= deltaTime;
+        const lifeRatio = this.life / this.maxLife;
+        
+        // 淡出效果
+        if (lifeRatio < 0.3) {
+            this.alpha = lifeRatio / 0.3;
+        }
+    }
+    
+    render(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        if (this.texture) {
+            // 绘制纹理粒子
+            const size = this.size * this.scale;
+            ctx.drawImage(this.texture, -size/2, -size/2, size, size);
+        } else {
+            // 绘制几何粒子
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size * this.scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+```
+
+### 1.3.2 粒子特效预设
+
+#### 爆炸特效
+```javascript
+class ExplosionEffect {
+    static create(x, y, size = 'medium') {
+        const configs = {
+            small: {
+                emissionRate: 100,
+                maxParticles: 30,
+                particleLife: 500,
+                speed: 200,
+                speedVariance: 100,
+                spread: 10,
+                size: 3,
+                color: ['#FF6B35', '#FFA500', '#FFFF00'],
+                gravity: 0
+            },
+            medium: {
+                emissionRate: 200,
+                maxParticles: 50,
+                particleLife: 800,
+                speed: 300,
+                speedVariance: 150,
+                spread: 20,
+                size: 5,
+                color: ['#FF4500', '#FF6347', '#FFA500'],
+                gravity: 100
+            },
+            large: {
+                emissionRate: 500,
+                maxParticles: 100,
+                particleLife: 1200,
+                speed: 400,
+                speedVariance: 200,
+                spread: 40,
+                size: 8,
+                color: ['#FF0000', '#FF4500', '#FFFF00'],
+                gravity: 200
+            }
+        };
+        
+        const config = configs[size];
+        const emitter = new ParticleEmitter({
+            x: x,
+            y: y,
+            ...config,
+            emitterLife: 100  // 短暂爆发
+        });
+        
+        return emitter;
+    }
+}
+```
+
+#### 推进器尾焰
+```javascript
+class ThrusterEffect {
+    static create(parent) {
+        return new ParticleEmitter({
+            x: parent.x,
+            y: parent.y + parent.height / 2,
+            emissionRate: 30,
+            maxParticles: 100,
+            particleLife: 400,
+            angle: Math.PI / 2,  // 向下
+            angleVariance: 0.3,
+            speed: 100,
+            speedVariance: 20,
+            size: 6,
+            color: ['#4169E1', '#00BFFF', '#FFFFFF'],
+            fadeOut: true,
+            shrink: true,
+            follow: parent  // 跟随父对象
+        });
+    }
+}
+```
+
+#### 子弹拖尾效果
+```javascript
+class BulletTrail {
+    static create(bullet) {
+        return new ParticleEmitter({
+            x: bullet.x,
+            y: bullet.y,
+            emissionRate: 60,
+            maxParticles: 20,
+            particleLife: 200,
+            angle: bullet.angle + Math.PI,  // 反向
+            angleVariance: 0.1,
+            speed: 50,
+            speedVariance: 10,
+            size: 2,
+            color: bullet.trailColor || '#FFFF00',
+            alpha: 0.6,
+            fadeOut: true,
+            follow: bullet
+        });
+    }
+}
+```
+
+### 1.3.3 粒子物理模拟
+
+#### 重力与风力
+```javascript
+class ParticlePhysics {
+    static applyGravity(particle, gravity = 9.8) {
+        particle.ay += gravity;
+    }
+    
+    static applyWind(particle, windX, windY) {
+        particle.ax += windX;
+        particle.ay += windY;
+    }
+    
+    static applyDrag(particle, dragCoefficient = 0.98) {
+        particle.vx *= dragCoefficient;
+        particle.vy *= dragCoefficient;
+    }
+    
+    static applyTurbulence(particle, intensity = 10) {
+        particle.vx += (Math.random() - 0.5) * intensity;
+        particle.vy += (Math.random() - 0.5) * intensity;
+    }
+}
+```
+
+#### 磁场吸引
+```javascript
+class MagneticField {
+    constructor(x, y, strength) {
+        this.x = x;
+        this.y = y;
+        this.strength = strength;
+        this.radius = 200;
+    }
+    
+    applyTo(particle) {
+        const dx = this.x - particle.x;
+        const dy = this.y - particle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.radius && distance > 0) {
+            const force = this.strength / (distance * distance);
+            particle.ax += (dx / distance) * force;
+            particle.ay += (dy / distance) * force;
+        }
+    }
+}
+```
+
+### 1.3.4 粒子渲染优化
+
+#### 批量渲染
+```javascript
+class ParticleBatchRenderer {
+    constructor(maxParticles = 10000) {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.particleData = new Float32Array(maxParticles * 6); // x,y,size,r,g,b
+    }
+    
+    renderBatch(particles, mainCtx) {
+        // 清空粒子画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 按颜色分组渲染
+        const groups = this.groupByColor(particles);
+        
+        for (const [color, group] of groups) {
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            
+            for (const particle of group) {
+                this.ctx.moveTo(particle.x + particle.size, particle.y);
+                this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            }
+            
+            this.ctx.fill();
+        }
+        
+        // 复制到主画布
+        mainCtx.drawImage(this.canvas, 0, 0);
+    }
+}
+```
+
+#### 粒子LOD（细节层次）
+```javascript
+class ParticleLOD {
+    static getDetailLevel(distance, particleCount) {
+        if (particleCount > 1000) {
+            // 高密度场景降级
+            return 'low';
+        } else if (distance > 500) {
+            // 远距离降级
+            return 'low';
+        } else if (distance > 200) {
+            return 'medium';
+        } else {
+            return 'high';
+        }
+    }
+    
+    static applyLOD(particle, level) {
+        switch(level) {
+            case 'low':
+                particle.skipFrames = 2;  // 隔帧更新
+                particle.useSimpleRender = true;
+                break;
+            case 'medium':
+                particle.skipFrames = 1;
+                particle.useSimpleRender = false;
+                break;
+            case 'high':
+                particle.skipFrames = 0;
+                particle.useSimpleRender = false;
+                break;
+        }
+    }
+}
+```
+
 ### 1.1.4 双缓冲与垂直同步
 
 #### 离屏Canvas缓冲
+```
+
+## 1.3 粒子特效引擎
+
+### 1.3.1 粒子系统架构
+
+#### 粒子发射器
+```javascript
+class ParticleEmitter {
+    constructor(config) {
+        this.x = config.x || 0;
+        this.y = config.y || 0;
+        this.emissionRate = config.emissionRate || 10;  // 每秒发射粒子数
+        this.maxParticles = config.maxParticles || 1000;
+        this.particleLife = config.particleLife || 2000; // 毫秒
+        this.emitterLife = config.emitterLife || -1;     // -1表示永久
+        this.particles = [];
+        this.particlePool = [];  // 对象池
+        this.active = true;
+        this.emissionTimer = 0;
+        this.config = config;
+    }
+    
+    emit() {
+        if (!this.active) return;
+        
+        if (this.particles.length >= this.maxParticles) return;
+        
+        // 从对象池获取或创建新粒子
+        let particle = this.particlePool.pop();
+        if (!particle) {
+            particle = new Particle();
+        }
+        
+        // 初始化粒子属性
+        this.initParticle(particle);
+        this.particles.push(particle);
+    }
+    
+    initParticle(particle) {
+        // 位置初始化
+        particle.x = this.x + (Math.random() - 0.5) * this.config.spread;
+        particle.y = this.y;
+        
+        // 速度初始化
+        const angle = this.config.angle + (Math.random() - 0.5) * this.config.angleVariance;
+        const speed = this.config.speed + (Math.random() - 0.5) * this.config.speedVariance;
+        particle.vx = Math.cos(angle) * speed;
+        particle.vy = Math.sin(angle) * speed;
+        
+        // 生命周期
+        particle.life = this.particleLife;
+        particle.maxLife = this.particleLife;
+        
+        // 视觉属性
+        particle.color = this.config.color || '#FFFFFF';
+        particle.size = this.config.size || 4;
+        particle.alpha = 1;
+    }
+    
+    update(deltaTime) {
+        // 更新发射计时器
+        this.emissionTimer += deltaTime;
+        const emissionInterval = 1000 / this.emissionRate;
+        
+        while (this.emissionTimer >= emissionInterval) {
+            this.emit();
+            this.emissionTimer -= emissionInterval;
+        }
+        
+        // 更新所有粒子
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const particle = this.particles[i];
+            particle.update(deltaTime);
+            
+            if (particle.life <= 0) {
+                // 回收到对象池
+                this.particles.splice(i, 1);
+                this.particlePool.push(particle);
+            }
+        }
+    }
+}
+```
+
+#### 粒子类定义
+```javascript
+class Particle {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.ax = 0;  // 加速度
+        this.ay = 0;
+        this.size = 4;
+        this.color = '#FFFFFF';
+        this.alpha = 1;
+        this.rotation = 0;
+        this.rotationSpeed = 0;
+        this.life = 1000;
+        this.maxLife = 1000;
+        this.scale = 1;
+        this.texture = null;
+    }
+    
+    update(deltaTime) {
+        const dt = deltaTime / 1000; // 转换为秒
+        
+        // 物理更新
+        this.vx += this.ax * dt;
+        this.vy += this.ay * dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.rotation += this.rotationSpeed * dt;
+        
+        // 生命周期更新
+        this.life -= deltaTime;
+        const lifeRatio = this.life / this.maxLife;
+        
+        // 淡出效果
+        if (lifeRatio < 0.3) {
+            this.alpha = lifeRatio / 0.3;
+        }
+    }
+    
+    render(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        if (this.texture) {
+            // 绘制纹理粒子
+            const size = this.size * this.scale;
+            ctx.drawImage(this.texture, -size/2, -size/2, size, size);
+        } else {
+            // 绘制几何粒子
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size * this.scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+```
+
+### 1.3.2 粒子特效预设
+
+#### 爆炸特效
+```javascript
+class ExplosionEffect {
+    static create(x, y, size = 'medium') {
+        const configs = {
+            small: {
+                emissionRate: 100,
+                maxParticles: 30,
+                particleLife: 500,
+                speed: 200,
+                speedVariance: 100,
+                spread: 10,
+                size: 3,
+                color: ['#FF6B35', '#FFA500', '#FFFF00'],
+                gravity: 0
+            },
+            medium: {
+                emissionRate: 200,
+                maxParticles: 50,
+                particleLife: 800,
+                speed: 300,
+                speedVariance: 150,
+                spread: 20,
+                size: 5,
+                color: ['#FF4500', '#FF6347', '#FFA500'],
+                gravity: 100
+            },
+            large: {
+                emissionRate: 500,
+                maxParticles: 100,
+                particleLife: 1200,
+                speed: 400,
+                speedVariance: 200,
+                spread: 40,
+                size: 8,
+                color: ['#FF0000', '#FF4500', '#FFFF00'],
+                gravity: 200
+            }
+        };
+        
+        const config = configs[size];
+        const emitter = new ParticleEmitter({
+            x: x,
+            y: y,
+            ...config,
+            emitterLife: 100  // 短暂爆发
+        });
+        
+        return emitter;
+    }
+}
+```
+
+#### 推进器尾焰
+```javascript
+class ThrusterEffect {
+    static create(parent) {
+        return new ParticleEmitter({
+            x: parent.x,
+            y: parent.y + parent.height / 2,
+            emissionRate: 30,
+            maxParticles: 100,
+            particleLife: 400,
+            angle: Math.PI / 2,  // 向下
+            angleVariance: 0.3,
+            speed: 100,
+            speedVariance: 20,
+            size: 6,
+            color: ['#4169E1', '#00BFFF', '#FFFFFF'],
+            fadeOut: true,
+            shrink: true,
+            follow: parent  // 跟随父对象
+        });
+    }
+}
+```
+
+#### 子弹拖尾效果
+```javascript
+class BulletTrail {
+    static create(bullet) {
+        return new ParticleEmitter({
+            x: bullet.x,
+            y: bullet.y,
+            emissionRate: 60,
+            maxParticles: 20,
+            particleLife: 200,
+            angle: bullet.angle + Math.PI,  // 反向
+            angleVariance: 0.1,
+            speed: 50,
+            speedVariance: 10,
+            size: 2,
+            color: bullet.trailColor || '#FFFF00',
+            alpha: 0.6,
+            fadeOut: true,
+            follow: bullet
+        });
+    }
+}
+```
+
+### 1.3.3 粒子物理模拟
+
+#### 重力与风力
+```javascript
+class ParticlePhysics {
+    static applyGravity(particle, gravity = 9.8) {
+        particle.ay += gravity;
+    }
+    
+    static applyWind(particle, windX, windY) {
+        particle.ax += windX;
+        particle.ay += windY;
+    }
+    
+    static applyDrag(particle, dragCoefficient = 0.98) {
+        particle.vx *= dragCoefficient;
+        particle.vy *= dragCoefficient;
+    }
+    
+    static applyTurbulence(particle, intensity = 10) {
+        particle.vx += (Math.random() - 0.5) * intensity;
+        particle.vy += (Math.random() - 0.5) * intensity;
+    }
+}
+```
+
+#### 磁场吸引
+```javascript
+class MagneticField {
+    constructor(x, y, strength) {
+        this.x = x;
+        this.y = y;
+        this.strength = strength;
+        this.radius = 200;
+    }
+    
+    applyTo(particle) {
+        const dx = this.x - particle.x;
+        const dy = this.y - particle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.radius && distance > 0) {
+            const force = this.strength / (distance * distance);
+            particle.ax += (dx / distance) * force;
+            particle.ay += (dy / distance) * force;
+        }
+    }
+}
+```
+
+### 1.3.4 粒子渲染优化
+
+#### 批量渲染
+```javascript
+class ParticleBatchRenderer {
+    constructor(maxParticles = 10000) {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.particleData = new Float32Array(maxParticles * 6); // x,y,size,r,g,b
+    }
+    
+    renderBatch(particles, mainCtx) {
+        // 清空粒子画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 按颜色分组渲染
+        const groups = this.groupByColor(particles);
+        
+        for (const [color, group] of groups) {
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            
+            for (const particle of group) {
+                this.ctx.moveTo(particle.x + particle.size, particle.y);
+                this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            }
+            
+            this.ctx.fill();
+        }
+        
+        // 复制到主画布
+        mainCtx.drawImage(this.canvas, 0, 0);
+    }
+}
+```
+
+#### 粒子LOD（细节层次）
+```javascript
+class ParticleLOD {
+    static getDetailLevel(distance, particleCount) {
+        if (particleCount > 1000) {
+            // 高密度场景降级
+            return 'low';
+        } else if (distance > 500) {
+            // 远距离降级
+            return 'low';
+        } else if (distance > 200) {
+            return 'medium';
+        } else {
+            return 'high';
+        }
+    }
+    
+    static applyLOD(particle, level) {
+        switch(level) {
+            case 'low':
+                particle.skipFrames = 2;  // 隔帧更新
+                particle.useSimpleRender = true;
+                break;
+            case 'medium':
+                particle.skipFrames = 1;
+                particle.useSimpleRender = false;
+                break;
+            case 'high':
+                particle.skipFrames = 0;
+                particle.useSimpleRender = false;
+                break;
+        }
+    }
+}
 ```javascript
 class DoubleBuffer {
     constructor(width, height) {
@@ -148,7 +2752,751 @@ class DoubleBuffer {
 }
 ```
 
+## 1.3 粒子特效引擎
+
+### 1.3.1 粒子系统架构
+
+#### 粒子发射器
+```javascript
+class ParticleEmitter {
+    constructor(config) {
+        this.x = config.x || 0;
+        this.y = config.y || 0;
+        this.emissionRate = config.emissionRate || 10;  // 每秒发射粒子数
+        this.maxParticles = config.maxParticles || 1000;
+        this.particleLife = config.particleLife || 2000; // 毫秒
+        this.emitterLife = config.emitterLife || -1;     // -1表示永久
+        this.particles = [];
+        this.particlePool = [];  // 对象池
+        this.active = true;
+        this.emissionTimer = 0;
+        this.config = config;
+    }
+    
+    emit() {
+        if (!this.active) return;
+        
+        if (this.particles.length >= this.maxParticles) return;
+        
+        // 从对象池获取或创建新粒子
+        let particle = this.particlePool.pop();
+        if (!particle) {
+            particle = new Particle();
+        }
+        
+        // 初始化粒子属性
+        this.initParticle(particle);
+        this.particles.push(particle);
+    }
+    
+    initParticle(particle) {
+        // 位置初始化
+        particle.x = this.x + (Math.random() - 0.5) * this.config.spread;
+        particle.y = this.y;
+        
+        // 速度初始化
+        const angle = this.config.angle + (Math.random() - 0.5) * this.config.angleVariance;
+        const speed = this.config.speed + (Math.random() - 0.5) * this.config.speedVariance;
+        particle.vx = Math.cos(angle) * speed;
+        particle.vy = Math.sin(angle) * speed;
+        
+        // 生命周期
+        particle.life = this.particleLife;
+        particle.maxLife = this.particleLife;
+        
+        // 视觉属性
+        particle.color = this.config.color || '#FFFFFF';
+        particle.size = this.config.size || 4;
+        particle.alpha = 1;
+    }
+    
+    update(deltaTime) {
+        // 更新发射计时器
+        this.emissionTimer += deltaTime;
+        const emissionInterval = 1000 / this.emissionRate;
+        
+        while (this.emissionTimer >= emissionInterval) {
+            this.emit();
+            this.emissionTimer -= emissionInterval;
+        }
+        
+        // 更新所有粒子
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const particle = this.particles[i];
+            particle.update(deltaTime);
+            
+            if (particle.life <= 0) {
+                // 回收到对象池
+                this.particles.splice(i, 1);
+                this.particlePool.push(particle);
+            }
+        }
+    }
+}
+```
+
+#### 粒子类定义
+```javascript
+class Particle {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.ax = 0;  // 加速度
+        this.ay = 0;
+        this.size = 4;
+        this.color = '#FFFFFF';
+        this.alpha = 1;
+        this.rotation = 0;
+        this.rotationSpeed = 0;
+        this.life = 1000;
+        this.maxLife = 1000;
+        this.scale = 1;
+        this.texture = null;
+    }
+    
+    update(deltaTime) {
+        const dt = deltaTime / 1000; // 转换为秒
+        
+        // 物理更新
+        this.vx += this.ax * dt;
+        this.vy += this.ay * dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.rotation += this.rotationSpeed * dt;
+        
+        // 生命周期更新
+        this.life -= deltaTime;
+        const lifeRatio = this.life / this.maxLife;
+        
+        // 淡出效果
+        if (lifeRatio < 0.3) {
+            this.alpha = lifeRatio / 0.3;
+        }
+    }
+    
+    render(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        if (this.texture) {
+            // 绘制纹理粒子
+            const size = this.size * this.scale;
+            ctx.drawImage(this.texture, -size/2, -size/2, size, size);
+        } else {
+            // 绘制几何粒子
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size * this.scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+```
+
+### 1.3.2 粒子特效预设
+
+#### 爆炸特效
+```javascript
+class ExplosionEffect {
+    static create(x, y, size = 'medium') {
+        const configs = {
+            small: {
+                emissionRate: 100,
+                maxParticles: 30,
+                particleLife: 500,
+                speed: 200,
+                speedVariance: 100,
+                spread: 10,
+                size: 3,
+                color: ['#FF6B35', '#FFA500', '#FFFF00'],
+                gravity: 0
+            },
+            medium: {
+                emissionRate: 200,
+                maxParticles: 50,
+                particleLife: 800,
+                speed: 300,
+                speedVariance: 150,
+                spread: 20,
+                size: 5,
+                color: ['#FF4500', '#FF6347', '#FFA500'],
+                gravity: 100
+            },
+            large: {
+                emissionRate: 500,
+                maxParticles: 100,
+                particleLife: 1200,
+                speed: 400,
+                speedVariance: 200,
+                spread: 40,
+                size: 8,
+                color: ['#FF0000', '#FF4500', '#FFFF00'],
+                gravity: 200
+            }
+        };
+        
+        const config = configs[size];
+        const emitter = new ParticleEmitter({
+            x: x,
+            y: y,
+            ...config,
+            emitterLife: 100  // 短暂爆发
+        });
+        
+        return emitter;
+    }
+}
+```
+
+#### 推进器尾焰
+```javascript
+class ThrusterEffect {
+    static create(parent) {
+        return new ParticleEmitter({
+            x: parent.x,
+            y: parent.y + parent.height / 2,
+            emissionRate: 30,
+            maxParticles: 100,
+            particleLife: 400,
+            angle: Math.PI / 2,  // 向下
+            angleVariance: 0.3,
+            speed: 100,
+            speedVariance: 20,
+            size: 6,
+            color: ['#4169E1', '#00BFFF', '#FFFFFF'],
+            fadeOut: true,
+            shrink: true,
+            follow: parent  // 跟随父对象
+        });
+    }
+}
+```
+
+#### 子弹拖尾效果
+```javascript
+class BulletTrail {
+    static create(bullet) {
+        return new ParticleEmitter({
+            x: bullet.x,
+            y: bullet.y,
+            emissionRate: 60,
+            maxParticles: 20,
+            particleLife: 200,
+            angle: bullet.angle + Math.PI,  // 反向
+            angleVariance: 0.1,
+            speed: 50,
+            speedVariance: 10,
+            size: 2,
+            color: bullet.trailColor || '#FFFF00',
+            alpha: 0.6,
+            fadeOut: true,
+            follow: bullet
+        });
+    }
+}
+```
+
+### 1.3.3 粒子物理模拟
+
+#### 重力与风力
+```javascript
+class ParticlePhysics {
+    static applyGravity(particle, gravity = 9.8) {
+        particle.ay += gravity;
+    }
+    
+    static applyWind(particle, windX, windY) {
+        particle.ax += windX;
+        particle.ay += windY;
+    }
+    
+    static applyDrag(particle, dragCoefficient = 0.98) {
+        particle.vx *= dragCoefficient;
+        particle.vy *= dragCoefficient;
+    }
+    
+    static applyTurbulence(particle, intensity = 10) {
+        particle.vx += (Math.random() - 0.5) * intensity;
+        particle.vy += (Math.random() - 0.5) * intensity;
+    }
+}
+```
+
+#### 磁场吸引
+```javascript
+class MagneticField {
+    constructor(x, y, strength) {
+        this.x = x;
+        this.y = y;
+        this.strength = strength;
+        this.radius = 200;
+    }
+    
+    applyTo(particle) {
+        const dx = this.x - particle.x;
+        const dy = this.y - particle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.radius && distance > 0) {
+            const force = this.strength / (distance * distance);
+            particle.ax += (dx / distance) * force;
+            particle.ay += (dy / distance) * force;
+        }
+    }
+}
+```
+
+### 1.3.4 粒子渲染优化
+
+#### 批量渲染
+```javascript
+class ParticleBatchRenderer {
+    constructor(maxParticles = 10000) {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.particleData = new Float32Array(maxParticles * 6); // x,y,size,r,g,b
+    }
+    
+    renderBatch(particles, mainCtx) {
+        // 清空粒子画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 按颜色分组渲染
+        const groups = this.groupByColor(particles);
+        
+        for (const [color, group] of groups) {
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            
+            for (const particle of group) {
+                this.ctx.moveTo(particle.x + particle.size, particle.y);
+                this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            }
+            
+            this.ctx.fill();
+        }
+        
+        // 复制到主画布
+        mainCtx.drawImage(this.canvas, 0, 0);
+    }
+}
+```
+
+#### 粒子LOD（细节层次）
+```javascript
+class ParticleLOD {
+    static getDetailLevel(distance, particleCount) {
+        if (particleCount > 1000) {
+            // 高密度场景降级
+            return 'low';
+        } else if (distance > 500) {
+            // 远距离降级
+            return 'low';
+        } else if (distance > 200) {
+            return 'medium';
+        } else {
+            return 'high';
+        }
+    }
+    
+    static applyLOD(particle, level) {
+        switch(level) {
+            case 'low':
+                particle.skipFrames = 2;  // 隔帧更新
+                particle.useSimpleRender = true;
+                break;
+            case 'medium':
+                particle.skipFrames = 1;
+                particle.useSimpleRender = false;
+                break;
+            case 'high':
+                particle.skipFrames = 0;
+                particle.useSimpleRender = false;
+                break;
+        }
+    }
+}
+```
+
 #### 帧率控制
+```
+
+## 1.3 粒子特效引擎
+
+### 1.3.1 粒子系统架构
+
+#### 粒子发射器
+```javascript
+class ParticleEmitter {
+    constructor(config) {
+        this.x = config.x || 0;
+        this.y = config.y || 0;
+        this.emissionRate = config.emissionRate || 10;  // 每秒发射粒子数
+        this.maxParticles = config.maxParticles || 1000;
+        this.particleLife = config.particleLife || 2000; // 毫秒
+        this.emitterLife = config.emitterLife || -1;     // -1表示永久
+        this.particles = [];
+        this.particlePool = [];  // 对象池
+        this.active = true;
+        this.emissionTimer = 0;
+        this.config = config;
+    }
+    
+    emit() {
+        if (!this.active) return;
+        
+        if (this.particles.length >= this.maxParticles) return;
+        
+        // 从对象池获取或创建新粒子
+        let particle = this.particlePool.pop();
+        if (!particle) {
+            particle = new Particle();
+        }
+        
+        // 初始化粒子属性
+        this.initParticle(particle);
+        this.particles.push(particle);
+    }
+    
+    initParticle(particle) {
+        // 位置初始化
+        particle.x = this.x + (Math.random() - 0.5) * this.config.spread;
+        particle.y = this.y;
+        
+        // 速度初始化
+        const angle = this.config.angle + (Math.random() - 0.5) * this.config.angleVariance;
+        const speed = this.config.speed + (Math.random() - 0.5) * this.config.speedVariance;
+        particle.vx = Math.cos(angle) * speed;
+        particle.vy = Math.sin(angle) * speed;
+        
+        // 生命周期
+        particle.life = this.particleLife;
+        particle.maxLife = this.particleLife;
+        
+        // 视觉属性
+        particle.color = this.config.color || '#FFFFFF';
+        particle.size = this.config.size || 4;
+        particle.alpha = 1;
+    }
+    
+    update(deltaTime) {
+        // 更新发射计时器
+        this.emissionTimer += deltaTime;
+        const emissionInterval = 1000 / this.emissionRate;
+        
+        while (this.emissionTimer >= emissionInterval) {
+            this.emit();
+            this.emissionTimer -= emissionInterval;
+        }
+        
+        // 更新所有粒子
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const particle = this.particles[i];
+            particle.update(deltaTime);
+            
+            if (particle.life <= 0) {
+                // 回收到对象池
+                this.particles.splice(i, 1);
+                this.particlePool.push(particle);
+            }
+        }
+    }
+}
+```
+
+#### 粒子类定义
+```javascript
+class Particle {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.ax = 0;  // 加速度
+        this.ay = 0;
+        this.size = 4;
+        this.color = '#FFFFFF';
+        this.alpha = 1;
+        this.rotation = 0;
+        this.rotationSpeed = 0;
+        this.life = 1000;
+        this.maxLife = 1000;
+        this.scale = 1;
+        this.texture = null;
+    }
+    
+    update(deltaTime) {
+        const dt = deltaTime / 1000; // 转换为秒
+        
+        // 物理更新
+        this.vx += this.ax * dt;
+        this.vy += this.ay * dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.rotation += this.rotationSpeed * dt;
+        
+        // 生命周期更新
+        this.life -= deltaTime;
+        const lifeRatio = this.life / this.maxLife;
+        
+        // 淡出效果
+        if (lifeRatio < 0.3) {
+            this.alpha = lifeRatio / 0.3;
+        }
+    }
+    
+    render(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        if (this.texture) {
+            // 绘制纹理粒子
+            const size = this.size * this.scale;
+            ctx.drawImage(this.texture, -size/2, -size/2, size, size);
+        } else {
+            // 绘制几何粒子
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size * this.scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+```
+
+### 1.3.2 粒子特效预设
+
+#### 爆炸特效
+```javascript
+class ExplosionEffect {
+    static create(x, y, size = 'medium') {
+        const configs = {
+            small: {
+                emissionRate: 100,
+                maxParticles: 30,
+                particleLife: 500,
+                speed: 200,
+                speedVariance: 100,
+                spread: 10,
+                size: 3,
+                color: ['#FF6B35', '#FFA500', '#FFFF00'],
+                gravity: 0
+            },
+            medium: {
+                emissionRate: 200,
+                maxParticles: 50,
+                particleLife: 800,
+                speed: 300,
+                speedVariance: 150,
+                spread: 20,
+                size: 5,
+                color: ['#FF4500', '#FF6347', '#FFA500'],
+                gravity: 100
+            },
+            large: {
+                emissionRate: 500,
+                maxParticles: 100,
+                particleLife: 1200,
+                speed: 400,
+                speedVariance: 200,
+                spread: 40,
+                size: 8,
+                color: ['#FF0000', '#FF4500', '#FFFF00'],
+                gravity: 200
+            }
+        };
+        
+        const config = configs[size];
+        const emitter = new ParticleEmitter({
+            x: x,
+            y: y,
+            ...config,
+            emitterLife: 100  // 短暂爆发
+        });
+        
+        return emitter;
+    }
+}
+```
+
+#### 推进器尾焰
+```javascript
+class ThrusterEffect {
+    static create(parent) {
+        return new ParticleEmitter({
+            x: parent.x,
+            y: parent.y + parent.height / 2,
+            emissionRate: 30,
+            maxParticles: 100,
+            particleLife: 400,
+            angle: Math.PI / 2,  // 向下
+            angleVariance: 0.3,
+            speed: 100,
+            speedVariance: 20,
+            size: 6,
+            color: ['#4169E1', '#00BFFF', '#FFFFFF'],
+            fadeOut: true,
+            shrink: true,
+            follow: parent  // 跟随父对象
+        });
+    }
+}
+```
+
+#### 子弹拖尾效果
+```javascript
+class BulletTrail {
+    static create(bullet) {
+        return new ParticleEmitter({
+            x: bullet.x,
+            y: bullet.y,
+            emissionRate: 60,
+            maxParticles: 20,
+            particleLife: 200,
+            angle: bullet.angle + Math.PI,  // 反向
+            angleVariance: 0.1,
+            speed: 50,
+            speedVariance: 10,
+            size: 2,
+            color: bullet.trailColor || '#FFFF00',
+            alpha: 0.6,
+            fadeOut: true,
+            follow: bullet
+        });
+    }
+}
+```
+
+### 1.3.3 粒子物理模拟
+
+#### 重力与风力
+```javascript
+class ParticlePhysics {
+    static applyGravity(particle, gravity = 9.8) {
+        particle.ay += gravity;
+    }
+    
+    static applyWind(particle, windX, windY) {
+        particle.ax += windX;
+        particle.ay += windY;
+    }
+    
+    static applyDrag(particle, dragCoefficient = 0.98) {
+        particle.vx *= dragCoefficient;
+        particle.vy *= dragCoefficient;
+    }
+    
+    static applyTurbulence(particle, intensity = 10) {
+        particle.vx += (Math.random() - 0.5) * intensity;
+        particle.vy += (Math.random() - 0.5) * intensity;
+    }
+}
+```
+
+#### 磁场吸引
+```javascript
+class MagneticField {
+    constructor(x, y, strength) {
+        this.x = x;
+        this.y = y;
+        this.strength = strength;
+        this.radius = 200;
+    }
+    
+    applyTo(particle) {
+        const dx = this.x - particle.x;
+        const dy = this.y - particle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.radius && distance > 0) {
+            const force = this.strength / (distance * distance);
+            particle.ax += (dx / distance) * force;
+            particle.ay += (dy / distance) * force;
+        }
+    }
+}
+```
+
+### 1.3.4 粒子渲染优化
+
+#### 批量渲染
+```javascript
+class ParticleBatchRenderer {
+    constructor(maxParticles = 10000) {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.particleData = new Float32Array(maxParticles * 6); // x,y,size,r,g,b
+    }
+    
+    renderBatch(particles, mainCtx) {
+        // 清空粒子画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 按颜色分组渲染
+        const groups = this.groupByColor(particles);
+        
+        for (const [color, group] of groups) {
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            
+            for (const particle of group) {
+                this.ctx.moveTo(particle.x + particle.size, particle.y);
+                this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            }
+            
+            this.ctx.fill();
+        }
+        
+        // 复制到主画布
+        mainCtx.drawImage(this.canvas, 0, 0);
+    }
+}
+```
+
+#### 粒子LOD（细节层次）
+```javascript
+class ParticleLOD {
+    static getDetailLevel(distance, particleCount) {
+        if (particleCount > 1000) {
+            // 高密度场景降级
+            return 'low';
+        } else if (distance > 500) {
+            // 远距离降级
+            return 'low';
+        } else if (distance > 200) {
+            return 'medium';
+        } else {
+            return 'high';
+        }
+    }
+    
+    static applyLOD(particle, level) {
+        switch(level) {
+            case 'low':
+                particle.skipFrames = 2;  // 隔帧更新
+                particle.useSimpleRender = true;
+                break;
+            case 'medium':
+                particle.skipFrames = 1;
+                particle.useSimpleRender = false;
+                break;
+            case 'high':
+                particle.skipFrames = 0;
+                particle.useSimpleRender = false;
+                break;
+        }
+    }
+}
 ```javascript
 class FrameController {
     constructor(targetFPS = 60) {
@@ -177,11 +3525,755 @@ class FrameController {
 }
 ```
 
+## 1.3 粒子特效引擎
+
+### 1.3.1 粒子系统架构
+
+#### 粒子发射器
+```javascript
+class ParticleEmitter {
+    constructor(config) {
+        this.x = config.x || 0;
+        this.y = config.y || 0;
+        this.emissionRate = config.emissionRate || 10;  // 每秒发射粒子数
+        this.maxParticles = config.maxParticles || 1000;
+        this.particleLife = config.particleLife || 2000; // 毫秒
+        this.emitterLife = config.emitterLife || -1;     // -1表示永久
+        this.particles = [];
+        this.particlePool = [];  // 对象池
+        this.active = true;
+        this.emissionTimer = 0;
+        this.config = config;
+    }
+    
+    emit() {
+        if (!this.active) return;
+        
+        if (this.particles.length >= this.maxParticles) return;
+        
+        // 从对象池获取或创建新粒子
+        let particle = this.particlePool.pop();
+        if (!particle) {
+            particle = new Particle();
+        }
+        
+        // 初始化粒子属性
+        this.initParticle(particle);
+        this.particles.push(particle);
+    }
+    
+    initParticle(particle) {
+        // 位置初始化
+        particle.x = this.x + (Math.random() - 0.5) * this.config.spread;
+        particle.y = this.y;
+        
+        // 速度初始化
+        const angle = this.config.angle + (Math.random() - 0.5) * this.config.angleVariance;
+        const speed = this.config.speed + (Math.random() - 0.5) * this.config.speedVariance;
+        particle.vx = Math.cos(angle) * speed;
+        particle.vy = Math.sin(angle) * speed;
+        
+        // 生命周期
+        particle.life = this.particleLife;
+        particle.maxLife = this.particleLife;
+        
+        // 视觉属性
+        particle.color = this.config.color || '#FFFFFF';
+        particle.size = this.config.size || 4;
+        particle.alpha = 1;
+    }
+    
+    update(deltaTime) {
+        // 更新发射计时器
+        this.emissionTimer += deltaTime;
+        const emissionInterval = 1000 / this.emissionRate;
+        
+        while (this.emissionTimer >= emissionInterval) {
+            this.emit();
+            this.emissionTimer -= emissionInterval;
+        }
+        
+        // 更新所有粒子
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const particle = this.particles[i];
+            particle.update(deltaTime);
+            
+            if (particle.life <= 0) {
+                // 回收到对象池
+                this.particles.splice(i, 1);
+                this.particlePool.push(particle);
+            }
+        }
+    }
+}
+```
+
+#### 粒子类定义
+```javascript
+class Particle {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.ax = 0;  // 加速度
+        this.ay = 0;
+        this.size = 4;
+        this.color = '#FFFFFF';
+        this.alpha = 1;
+        this.rotation = 0;
+        this.rotationSpeed = 0;
+        this.life = 1000;
+        this.maxLife = 1000;
+        this.scale = 1;
+        this.texture = null;
+    }
+    
+    update(deltaTime) {
+        const dt = deltaTime / 1000; // 转换为秒
+        
+        // 物理更新
+        this.vx += this.ax * dt;
+        this.vy += this.ay * dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.rotation += this.rotationSpeed * dt;
+        
+        // 生命周期更新
+        this.life -= deltaTime;
+        const lifeRatio = this.life / this.maxLife;
+        
+        // 淡出效果
+        if (lifeRatio < 0.3) {
+            this.alpha = lifeRatio / 0.3;
+        }
+    }
+    
+    render(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        if (this.texture) {
+            // 绘制纹理粒子
+            const size = this.size * this.scale;
+            ctx.drawImage(this.texture, -size/2, -size/2, size, size);
+        } else {
+            // 绘制几何粒子
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size * this.scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+```
+
+### 1.3.2 粒子特效预设
+
+#### 爆炸特效
+```javascript
+class ExplosionEffect {
+    static create(x, y, size = 'medium') {
+        const configs = {
+            small: {
+                emissionRate: 100,
+                maxParticles: 30,
+                particleLife: 500,
+                speed: 200,
+                speedVariance: 100,
+                spread: 10,
+                size: 3,
+                color: ['#FF6B35', '#FFA500', '#FFFF00'],
+                gravity: 0
+            },
+            medium: {
+                emissionRate: 200,
+                maxParticles: 50,
+                particleLife: 800,
+                speed: 300,
+                speedVariance: 150,
+                spread: 20,
+                size: 5,
+                color: ['#FF4500', '#FF6347', '#FFA500'],
+                gravity: 100
+            },
+            large: {
+                emissionRate: 500,
+                maxParticles: 100,
+                particleLife: 1200,
+                speed: 400,
+                speedVariance: 200,
+                spread: 40,
+                size: 8,
+                color: ['#FF0000', '#FF4500', '#FFFF00'],
+                gravity: 200
+            }
+        };
+        
+        const config = configs[size];
+        const emitter = new ParticleEmitter({
+            x: x,
+            y: y,
+            ...config,
+            emitterLife: 100  // 短暂爆发
+        });
+        
+        return emitter;
+    }
+}
+```
+
+#### 推进器尾焰
+```javascript
+class ThrusterEffect {
+    static create(parent) {
+        return new ParticleEmitter({
+            x: parent.x,
+            y: parent.y + parent.height / 2,
+            emissionRate: 30,
+            maxParticles: 100,
+            particleLife: 400,
+            angle: Math.PI / 2,  // 向下
+            angleVariance: 0.3,
+            speed: 100,
+            speedVariance: 20,
+            size: 6,
+            color: ['#4169E1', '#00BFFF', '#FFFFFF'],
+            fadeOut: true,
+            shrink: true,
+            follow: parent  // 跟随父对象
+        });
+    }
+}
+```
+
+#### 子弹拖尾效果
+```javascript
+class BulletTrail {
+    static create(bullet) {
+        return new ParticleEmitter({
+            x: bullet.x,
+            y: bullet.y,
+            emissionRate: 60,
+            maxParticles: 20,
+            particleLife: 200,
+            angle: bullet.angle + Math.PI,  // 反向
+            angleVariance: 0.1,
+            speed: 50,
+            speedVariance: 10,
+            size: 2,
+            color: bullet.trailColor || '#FFFF00',
+            alpha: 0.6,
+            fadeOut: true,
+            follow: bullet
+        });
+    }
+}
+```
+
+### 1.3.3 粒子物理模拟
+
+#### 重力与风力
+```javascript
+class ParticlePhysics {
+    static applyGravity(particle, gravity = 9.8) {
+        particle.ay += gravity;
+    }
+    
+    static applyWind(particle, windX, windY) {
+        particle.ax += windX;
+        particle.ay += windY;
+    }
+    
+    static applyDrag(particle, dragCoefficient = 0.98) {
+        particle.vx *= dragCoefficient;
+        particle.vy *= dragCoefficient;
+    }
+    
+    static applyTurbulence(particle, intensity = 10) {
+        particle.vx += (Math.random() - 0.5) * intensity;
+        particle.vy += (Math.random() - 0.5) * intensity;
+    }
+}
+```
+
+#### 磁场吸引
+```javascript
+class MagneticField {
+    constructor(x, y, strength) {
+        this.x = x;
+        this.y = y;
+        this.strength = strength;
+        this.radius = 200;
+    }
+    
+    applyTo(particle) {
+        const dx = this.x - particle.x;
+        const dy = this.y - particle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.radius && distance > 0) {
+            const force = this.strength / (distance * distance);
+            particle.ax += (dx / distance) * force;
+            particle.ay += (dy / distance) * force;
+        }
+    }
+}
+```
+
+### 1.3.4 粒子渲染优化
+
+#### 批量渲染
+```javascript
+class ParticleBatchRenderer {
+    constructor(maxParticles = 10000) {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.particleData = new Float32Array(maxParticles * 6); // x,y,size,r,g,b
+    }
+    
+    renderBatch(particles, mainCtx) {
+        // 清空粒子画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 按颜色分组渲染
+        const groups = this.groupByColor(particles);
+        
+        for (const [color, group] of groups) {
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            
+            for (const particle of group) {
+                this.ctx.moveTo(particle.x + particle.size, particle.y);
+                this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            }
+            
+            this.ctx.fill();
+        }
+        
+        // 复制到主画布
+        mainCtx.drawImage(this.canvas, 0, 0);
+    }
+}
+```
+
+#### 粒子LOD（细节层次）
+```javascript
+class ParticleLOD {
+    static getDetailLevel(distance, particleCount) {
+        if (particleCount > 1000) {
+            // 高密度场景降级
+            return 'low';
+        } else if (distance > 500) {
+            // 远距离降级
+            return 'low';
+        } else if (distance > 200) {
+            return 'medium';
+        } else {
+            return 'high';
+        }
+    }
+    
+    static applyLOD(particle, level) {
+        switch(level) {
+            case 'low':
+                particle.skipFrames = 2;  // 隔帧更新
+                particle.useSimpleRender = true;
+                break;
+            case 'medium':
+                particle.skipFrames = 1;
+                particle.useSimpleRender = false;
+                break;
+            case 'high':
+                particle.skipFrames = 0;
+                particle.useSimpleRender = false;
+                break;
+        }
+    }
+}
+```
+
 ## 1.2 精灵图管理与动画系统
 
 ### 1.2.1 精灵图集管理
 
 #### 纹理图集加载器
+```
+
+## 1.3 粒子特效引擎
+
+### 1.3.1 粒子系统架构
+
+#### 粒子发射器
+```javascript
+class ParticleEmitter {
+    constructor(config) {
+        this.x = config.x || 0;
+        this.y = config.y || 0;
+        this.emissionRate = config.emissionRate || 10;  // 每秒发射粒子数
+        this.maxParticles = config.maxParticles || 1000;
+        this.particleLife = config.particleLife || 2000; // 毫秒
+        this.emitterLife = config.emitterLife || -1;     // -1表示永久
+        this.particles = [];
+        this.particlePool = [];  // 对象池
+        this.active = true;
+        this.emissionTimer = 0;
+        this.config = config;
+    }
+    
+    emit() {
+        if (!this.active) return;
+        
+        if (this.particles.length >= this.maxParticles) return;
+        
+        // 从对象池获取或创建新粒子
+        let particle = this.particlePool.pop();
+        if (!particle) {
+            particle = new Particle();
+        }
+        
+        // 初始化粒子属性
+        this.initParticle(particle);
+        this.particles.push(particle);
+    }
+    
+    initParticle(particle) {
+        // 位置初始化
+        particle.x = this.x + (Math.random() - 0.5) * this.config.spread;
+        particle.y = this.y;
+        
+        // 速度初始化
+        const angle = this.config.angle + (Math.random() - 0.5) * this.config.angleVariance;
+        const speed = this.config.speed + (Math.random() - 0.5) * this.config.speedVariance;
+        particle.vx = Math.cos(angle) * speed;
+        particle.vy = Math.sin(angle) * speed;
+        
+        // 生命周期
+        particle.life = this.particleLife;
+        particle.maxLife = this.particleLife;
+        
+        // 视觉属性
+        particle.color = this.config.color || '#FFFFFF';
+        particle.size = this.config.size || 4;
+        particle.alpha = 1;
+    }
+    
+    update(deltaTime) {
+        // 更新发射计时器
+        this.emissionTimer += deltaTime;
+        const emissionInterval = 1000 / this.emissionRate;
+        
+        while (this.emissionTimer >= emissionInterval) {
+            this.emit();
+            this.emissionTimer -= emissionInterval;
+        }
+        
+        // 更新所有粒子
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const particle = this.particles[i];
+            particle.update(deltaTime);
+            
+            if (particle.life <= 0) {
+                // 回收到对象池
+                this.particles.splice(i, 1);
+                this.particlePool.push(particle);
+            }
+        }
+    }
+}
+```
+
+#### 粒子类定义
+```javascript
+class Particle {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.ax = 0;  // 加速度
+        this.ay = 0;
+        this.size = 4;
+        this.color = '#FFFFFF';
+        this.alpha = 1;
+        this.rotation = 0;
+        this.rotationSpeed = 0;
+        this.life = 1000;
+        this.maxLife = 1000;
+        this.scale = 1;
+        this.texture = null;
+    }
+    
+    update(deltaTime) {
+        const dt = deltaTime / 1000; // 转换为秒
+        
+        // 物理更新
+        this.vx += this.ax * dt;
+        this.vy += this.ay * dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.rotation += this.rotationSpeed * dt;
+        
+        // 生命周期更新
+        this.life -= deltaTime;
+        const lifeRatio = this.life / this.maxLife;
+        
+        // 淡出效果
+        if (lifeRatio < 0.3) {
+            this.alpha = lifeRatio / 0.3;
+        }
+    }
+    
+    render(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        if (this.texture) {
+            // 绘制纹理粒子
+            const size = this.size * this.scale;
+            ctx.drawImage(this.texture, -size/2, -size/2, size, size);
+        } else {
+            // 绘制几何粒子
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size * this.scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+```
+
+### 1.3.2 粒子特效预设
+
+#### 爆炸特效
+```javascript
+class ExplosionEffect {
+    static create(x, y, size = 'medium') {
+        const configs = {
+            small: {
+                emissionRate: 100,
+                maxParticles: 30,
+                particleLife: 500,
+                speed: 200,
+                speedVariance: 100,
+                spread: 10,
+                size: 3,
+                color: ['#FF6B35', '#FFA500', '#FFFF00'],
+                gravity: 0
+            },
+            medium: {
+                emissionRate: 200,
+                maxParticles: 50,
+                particleLife: 800,
+                speed: 300,
+                speedVariance: 150,
+                spread: 20,
+                size: 5,
+                color: ['#FF4500', '#FF6347', '#FFA500'],
+                gravity: 100
+            },
+            large: {
+                emissionRate: 500,
+                maxParticles: 100,
+                particleLife: 1200,
+                speed: 400,
+                speedVariance: 200,
+                spread: 40,
+                size: 8,
+                color: ['#FF0000', '#FF4500', '#FFFF00'],
+                gravity: 200
+            }
+        };
+        
+        const config = configs[size];
+        const emitter = new ParticleEmitter({
+            x: x,
+            y: y,
+            ...config,
+            emitterLife: 100  // 短暂爆发
+        });
+        
+        return emitter;
+    }
+}
+```
+
+#### 推进器尾焰
+```javascript
+class ThrusterEffect {
+    static create(parent) {
+        return new ParticleEmitter({
+            x: parent.x,
+            y: parent.y + parent.height / 2,
+            emissionRate: 30,
+            maxParticles: 100,
+            particleLife: 400,
+            angle: Math.PI / 2,  // 向下
+            angleVariance: 0.3,
+            speed: 100,
+            speedVariance: 20,
+            size: 6,
+            color: ['#4169E1', '#00BFFF', '#FFFFFF'],
+            fadeOut: true,
+            shrink: true,
+            follow: parent  // 跟随父对象
+        });
+    }
+}
+```
+
+#### 子弹拖尾效果
+```javascript
+class BulletTrail {
+    static create(bullet) {
+        return new ParticleEmitter({
+            x: bullet.x,
+            y: bullet.y,
+            emissionRate: 60,
+            maxParticles: 20,
+            particleLife: 200,
+            angle: bullet.angle + Math.PI,  // 反向
+            angleVariance: 0.1,
+            speed: 50,
+            speedVariance: 10,
+            size: 2,
+            color: bullet.trailColor || '#FFFF00',
+            alpha: 0.6,
+            fadeOut: true,
+            follow: bullet
+        });
+    }
+}
+```
+
+### 1.3.3 粒子物理模拟
+
+#### 重力与风力
+```javascript
+class ParticlePhysics {
+    static applyGravity(particle, gravity = 9.8) {
+        particle.ay += gravity;
+    }
+    
+    static applyWind(particle, windX, windY) {
+        particle.ax += windX;
+        particle.ay += windY;
+    }
+    
+    static applyDrag(particle, dragCoefficient = 0.98) {
+        particle.vx *= dragCoefficient;
+        particle.vy *= dragCoefficient;
+    }
+    
+    static applyTurbulence(particle, intensity = 10) {
+        particle.vx += (Math.random() - 0.5) * intensity;
+        particle.vy += (Math.random() - 0.5) * intensity;
+    }
+}
+```
+
+#### 磁场吸引
+```javascript
+class MagneticField {
+    constructor(x, y, strength) {
+        this.x = x;
+        this.y = y;
+        this.strength = strength;
+        this.radius = 200;
+    }
+    
+    applyTo(particle) {
+        const dx = this.x - particle.x;
+        const dy = this.y - particle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.radius && distance > 0) {
+            const force = this.strength / (distance * distance);
+            particle.ax += (dx / distance) * force;
+            particle.ay += (dy / distance) * force;
+        }
+    }
+}
+```
+
+### 1.3.4 粒子渲染优化
+
+#### 批量渲染
+```javascript
+class ParticleBatchRenderer {
+    constructor(maxParticles = 10000) {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.particleData = new Float32Array(maxParticles * 6); // x,y,size,r,g,b
+    }
+    
+    renderBatch(particles, mainCtx) {
+        // 清空粒子画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 按颜色分组渲染
+        const groups = this.groupByColor(particles);
+        
+        for (const [color, group] of groups) {
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            
+            for (const particle of group) {
+                this.ctx.moveTo(particle.x + particle.size, particle.y);
+                this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            }
+            
+            this.ctx.fill();
+        }
+        
+        // 复制到主画布
+        mainCtx.drawImage(this.canvas, 0, 0);
+    }
+}
+```
+
+#### 粒子LOD（细节层次）
+```javascript
+class ParticleLOD {
+    static getDetailLevel(distance, particleCount) {
+        if (particleCount > 1000) {
+            // 高密度场景降级
+            return 'low';
+        } else if (distance > 500) {
+            // 远距离降级
+            return 'low';
+        } else if (distance > 200) {
+            return 'medium';
+        } else {
+            return 'high';
+        }
+    }
+    
+    static applyLOD(particle, level) {
+        switch(level) {
+            case 'low':
+                particle.skipFrames = 2;  // 隔帧更新
+                particle.useSimpleRender = true;
+                break;
+            case 'medium':
+                particle.skipFrames = 1;
+                particle.useSimpleRender = false;
+                break;
+            case 'high':
+                particle.skipFrames = 0;
+                particle.useSimpleRender = false;
+                break;
+        }
+    }
+}
 ```javascript
 class TextureAtlas {
     constructor(imagePath, jsonPath) {
@@ -219,7 +4311,751 @@ class TextureAtlas {
 }
 ```
 
+## 1.3 粒子特效引擎
+
+### 1.3.1 粒子系统架构
+
+#### 粒子发射器
+```javascript
+class ParticleEmitter {
+    constructor(config) {
+        this.x = config.x || 0;
+        this.y = config.y || 0;
+        this.emissionRate = config.emissionRate || 10;  // 每秒发射粒子数
+        this.maxParticles = config.maxParticles || 1000;
+        this.particleLife = config.particleLife || 2000; // 毫秒
+        this.emitterLife = config.emitterLife || -1;     // -1表示永久
+        this.particles = [];
+        this.particlePool = [];  // 对象池
+        this.active = true;
+        this.emissionTimer = 0;
+        this.config = config;
+    }
+    
+    emit() {
+        if (!this.active) return;
+        
+        if (this.particles.length >= this.maxParticles) return;
+        
+        // 从对象池获取或创建新粒子
+        let particle = this.particlePool.pop();
+        if (!particle) {
+            particle = new Particle();
+        }
+        
+        // 初始化粒子属性
+        this.initParticle(particle);
+        this.particles.push(particle);
+    }
+    
+    initParticle(particle) {
+        // 位置初始化
+        particle.x = this.x + (Math.random() - 0.5) * this.config.spread;
+        particle.y = this.y;
+        
+        // 速度初始化
+        const angle = this.config.angle + (Math.random() - 0.5) * this.config.angleVariance;
+        const speed = this.config.speed + (Math.random() - 0.5) * this.config.speedVariance;
+        particle.vx = Math.cos(angle) * speed;
+        particle.vy = Math.sin(angle) * speed;
+        
+        // 生命周期
+        particle.life = this.particleLife;
+        particle.maxLife = this.particleLife;
+        
+        // 视觉属性
+        particle.color = this.config.color || '#FFFFFF';
+        particle.size = this.config.size || 4;
+        particle.alpha = 1;
+    }
+    
+    update(deltaTime) {
+        // 更新发射计时器
+        this.emissionTimer += deltaTime;
+        const emissionInterval = 1000 / this.emissionRate;
+        
+        while (this.emissionTimer >= emissionInterval) {
+            this.emit();
+            this.emissionTimer -= emissionInterval;
+        }
+        
+        // 更新所有粒子
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const particle = this.particles[i];
+            particle.update(deltaTime);
+            
+            if (particle.life <= 0) {
+                // 回收到对象池
+                this.particles.splice(i, 1);
+                this.particlePool.push(particle);
+            }
+        }
+    }
+}
+```
+
+#### 粒子类定义
+```javascript
+class Particle {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.ax = 0;  // 加速度
+        this.ay = 0;
+        this.size = 4;
+        this.color = '#FFFFFF';
+        this.alpha = 1;
+        this.rotation = 0;
+        this.rotationSpeed = 0;
+        this.life = 1000;
+        this.maxLife = 1000;
+        this.scale = 1;
+        this.texture = null;
+    }
+    
+    update(deltaTime) {
+        const dt = deltaTime / 1000; // 转换为秒
+        
+        // 物理更新
+        this.vx += this.ax * dt;
+        this.vy += this.ay * dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.rotation += this.rotationSpeed * dt;
+        
+        // 生命周期更新
+        this.life -= deltaTime;
+        const lifeRatio = this.life / this.maxLife;
+        
+        // 淡出效果
+        if (lifeRatio < 0.3) {
+            this.alpha = lifeRatio / 0.3;
+        }
+    }
+    
+    render(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        if (this.texture) {
+            // 绘制纹理粒子
+            const size = this.size * this.scale;
+            ctx.drawImage(this.texture, -size/2, -size/2, size, size);
+        } else {
+            // 绘制几何粒子
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size * this.scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+```
+
+### 1.3.2 粒子特效预设
+
+#### 爆炸特效
+```javascript
+class ExplosionEffect {
+    static create(x, y, size = 'medium') {
+        const configs = {
+            small: {
+                emissionRate: 100,
+                maxParticles: 30,
+                particleLife: 500,
+                speed: 200,
+                speedVariance: 100,
+                spread: 10,
+                size: 3,
+                color: ['#FF6B35', '#FFA500', '#FFFF00'],
+                gravity: 0
+            },
+            medium: {
+                emissionRate: 200,
+                maxParticles: 50,
+                particleLife: 800,
+                speed: 300,
+                speedVariance: 150,
+                spread: 20,
+                size: 5,
+                color: ['#FF4500', '#FF6347', '#FFA500'],
+                gravity: 100
+            },
+            large: {
+                emissionRate: 500,
+                maxParticles: 100,
+                particleLife: 1200,
+                speed: 400,
+                speedVariance: 200,
+                spread: 40,
+                size: 8,
+                color: ['#FF0000', '#FF4500', '#FFFF00'],
+                gravity: 200
+            }
+        };
+        
+        const config = configs[size];
+        const emitter = new ParticleEmitter({
+            x: x,
+            y: y,
+            ...config,
+            emitterLife: 100  // 短暂爆发
+        });
+        
+        return emitter;
+    }
+}
+```
+
+#### 推进器尾焰
+```javascript
+class ThrusterEffect {
+    static create(parent) {
+        return new ParticleEmitter({
+            x: parent.x,
+            y: parent.y + parent.height / 2,
+            emissionRate: 30,
+            maxParticles: 100,
+            particleLife: 400,
+            angle: Math.PI / 2,  // 向下
+            angleVariance: 0.3,
+            speed: 100,
+            speedVariance: 20,
+            size: 6,
+            color: ['#4169E1', '#00BFFF', '#FFFFFF'],
+            fadeOut: true,
+            shrink: true,
+            follow: parent  // 跟随父对象
+        });
+    }
+}
+```
+
+#### 子弹拖尾效果
+```javascript
+class BulletTrail {
+    static create(bullet) {
+        return new ParticleEmitter({
+            x: bullet.x,
+            y: bullet.y,
+            emissionRate: 60,
+            maxParticles: 20,
+            particleLife: 200,
+            angle: bullet.angle + Math.PI,  // 反向
+            angleVariance: 0.1,
+            speed: 50,
+            speedVariance: 10,
+            size: 2,
+            color: bullet.trailColor || '#FFFF00',
+            alpha: 0.6,
+            fadeOut: true,
+            follow: bullet
+        });
+    }
+}
+```
+
+### 1.3.3 粒子物理模拟
+
+#### 重力与风力
+```javascript
+class ParticlePhysics {
+    static applyGravity(particle, gravity = 9.8) {
+        particle.ay += gravity;
+    }
+    
+    static applyWind(particle, windX, windY) {
+        particle.ax += windX;
+        particle.ay += windY;
+    }
+    
+    static applyDrag(particle, dragCoefficient = 0.98) {
+        particle.vx *= dragCoefficient;
+        particle.vy *= dragCoefficient;
+    }
+    
+    static applyTurbulence(particle, intensity = 10) {
+        particle.vx += (Math.random() - 0.5) * intensity;
+        particle.vy += (Math.random() - 0.5) * intensity;
+    }
+}
+```
+
+#### 磁场吸引
+```javascript
+class MagneticField {
+    constructor(x, y, strength) {
+        this.x = x;
+        this.y = y;
+        this.strength = strength;
+        this.radius = 200;
+    }
+    
+    applyTo(particle) {
+        const dx = this.x - particle.x;
+        const dy = this.y - particle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.radius && distance > 0) {
+            const force = this.strength / (distance * distance);
+            particle.ax += (dx / distance) * force;
+            particle.ay += (dy / distance) * force;
+        }
+    }
+}
+```
+
+### 1.3.4 粒子渲染优化
+
+#### 批量渲染
+```javascript
+class ParticleBatchRenderer {
+    constructor(maxParticles = 10000) {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.particleData = new Float32Array(maxParticles * 6); // x,y,size,r,g,b
+    }
+    
+    renderBatch(particles, mainCtx) {
+        // 清空粒子画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 按颜色分组渲染
+        const groups = this.groupByColor(particles);
+        
+        for (const [color, group] of groups) {
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            
+            for (const particle of group) {
+                this.ctx.moveTo(particle.x + particle.size, particle.y);
+                this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            }
+            
+            this.ctx.fill();
+        }
+        
+        // 复制到主画布
+        mainCtx.drawImage(this.canvas, 0, 0);
+    }
+}
+```
+
+#### 粒子LOD（细节层次）
+```javascript
+class ParticleLOD {
+    static getDetailLevel(distance, particleCount) {
+        if (particleCount > 1000) {
+            // 高密度场景降级
+            return 'low';
+        } else if (distance > 500) {
+            // 远距离降级
+            return 'low';
+        } else if (distance > 200) {
+            return 'medium';
+        } else {
+            return 'high';
+        }
+    }
+    
+    static applyLOD(particle, level) {
+        switch(level) {
+            case 'low':
+                particle.skipFrames = 2;  // 隔帧更新
+                particle.useSimpleRender = true;
+                break;
+            case 'medium':
+                particle.skipFrames = 1;
+                particle.useSimpleRender = false;
+                break;
+            case 'high':
+                particle.skipFrames = 0;
+                particle.useSimpleRender = false;
+                break;
+        }
+    }
+}
+```
+
 #### 精灵类定义
+```
+
+## 1.3 粒子特效引擎
+
+### 1.3.1 粒子系统架构
+
+#### 粒子发射器
+```javascript
+class ParticleEmitter {
+    constructor(config) {
+        this.x = config.x || 0;
+        this.y = config.y || 0;
+        this.emissionRate = config.emissionRate || 10;  // 每秒发射粒子数
+        this.maxParticles = config.maxParticles || 1000;
+        this.particleLife = config.particleLife || 2000; // 毫秒
+        this.emitterLife = config.emitterLife || -1;     // -1表示永久
+        this.particles = [];
+        this.particlePool = [];  // 对象池
+        this.active = true;
+        this.emissionTimer = 0;
+        this.config = config;
+    }
+    
+    emit() {
+        if (!this.active) return;
+        
+        if (this.particles.length >= this.maxParticles) return;
+        
+        // 从对象池获取或创建新粒子
+        let particle = this.particlePool.pop();
+        if (!particle) {
+            particle = new Particle();
+        }
+        
+        // 初始化粒子属性
+        this.initParticle(particle);
+        this.particles.push(particle);
+    }
+    
+    initParticle(particle) {
+        // 位置初始化
+        particle.x = this.x + (Math.random() - 0.5) * this.config.spread;
+        particle.y = this.y;
+        
+        // 速度初始化
+        const angle = this.config.angle + (Math.random() - 0.5) * this.config.angleVariance;
+        const speed = this.config.speed + (Math.random() - 0.5) * this.config.speedVariance;
+        particle.vx = Math.cos(angle) * speed;
+        particle.vy = Math.sin(angle) * speed;
+        
+        // 生命周期
+        particle.life = this.particleLife;
+        particle.maxLife = this.particleLife;
+        
+        // 视觉属性
+        particle.color = this.config.color || '#FFFFFF';
+        particle.size = this.config.size || 4;
+        particle.alpha = 1;
+    }
+    
+    update(deltaTime) {
+        // 更新发射计时器
+        this.emissionTimer += deltaTime;
+        const emissionInterval = 1000 / this.emissionRate;
+        
+        while (this.emissionTimer >= emissionInterval) {
+            this.emit();
+            this.emissionTimer -= emissionInterval;
+        }
+        
+        // 更新所有粒子
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const particle = this.particles[i];
+            particle.update(deltaTime);
+            
+            if (particle.life <= 0) {
+                // 回收到对象池
+                this.particles.splice(i, 1);
+                this.particlePool.push(particle);
+            }
+        }
+    }
+}
+```
+
+#### 粒子类定义
+```javascript
+class Particle {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.ax = 0;  // 加速度
+        this.ay = 0;
+        this.size = 4;
+        this.color = '#FFFFFF';
+        this.alpha = 1;
+        this.rotation = 0;
+        this.rotationSpeed = 0;
+        this.life = 1000;
+        this.maxLife = 1000;
+        this.scale = 1;
+        this.texture = null;
+    }
+    
+    update(deltaTime) {
+        const dt = deltaTime / 1000; // 转换为秒
+        
+        // 物理更新
+        this.vx += this.ax * dt;
+        this.vy += this.ay * dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.rotation += this.rotationSpeed * dt;
+        
+        // 生命周期更新
+        this.life -= deltaTime;
+        const lifeRatio = this.life / this.maxLife;
+        
+        // 淡出效果
+        if (lifeRatio < 0.3) {
+            this.alpha = lifeRatio / 0.3;
+        }
+    }
+    
+    render(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        if (this.texture) {
+            // 绘制纹理粒子
+            const size = this.size * this.scale;
+            ctx.drawImage(this.texture, -size/2, -size/2, size, size);
+        } else {
+            // 绘制几何粒子
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size * this.scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+```
+
+### 1.3.2 粒子特效预设
+
+#### 爆炸特效
+```javascript
+class ExplosionEffect {
+    static create(x, y, size = 'medium') {
+        const configs = {
+            small: {
+                emissionRate: 100,
+                maxParticles: 30,
+                particleLife: 500,
+                speed: 200,
+                speedVariance: 100,
+                spread: 10,
+                size: 3,
+                color: ['#FF6B35', '#FFA500', '#FFFF00'],
+                gravity: 0
+            },
+            medium: {
+                emissionRate: 200,
+                maxParticles: 50,
+                particleLife: 800,
+                speed: 300,
+                speedVariance: 150,
+                spread: 20,
+                size: 5,
+                color: ['#FF4500', '#FF6347', '#FFA500'],
+                gravity: 100
+            },
+            large: {
+                emissionRate: 500,
+                maxParticles: 100,
+                particleLife: 1200,
+                speed: 400,
+                speedVariance: 200,
+                spread: 40,
+                size: 8,
+                color: ['#FF0000', '#FF4500', '#FFFF00'],
+                gravity: 200
+            }
+        };
+        
+        const config = configs[size];
+        const emitter = new ParticleEmitter({
+            x: x,
+            y: y,
+            ...config,
+            emitterLife: 100  // 短暂爆发
+        });
+        
+        return emitter;
+    }
+}
+```
+
+#### 推进器尾焰
+```javascript
+class ThrusterEffect {
+    static create(parent) {
+        return new ParticleEmitter({
+            x: parent.x,
+            y: parent.y + parent.height / 2,
+            emissionRate: 30,
+            maxParticles: 100,
+            particleLife: 400,
+            angle: Math.PI / 2,  // 向下
+            angleVariance: 0.3,
+            speed: 100,
+            speedVariance: 20,
+            size: 6,
+            color: ['#4169E1', '#00BFFF', '#FFFFFF'],
+            fadeOut: true,
+            shrink: true,
+            follow: parent  // 跟随父对象
+        });
+    }
+}
+```
+
+#### 子弹拖尾效果
+```javascript
+class BulletTrail {
+    static create(bullet) {
+        return new ParticleEmitter({
+            x: bullet.x,
+            y: bullet.y,
+            emissionRate: 60,
+            maxParticles: 20,
+            particleLife: 200,
+            angle: bullet.angle + Math.PI,  // 反向
+            angleVariance: 0.1,
+            speed: 50,
+            speedVariance: 10,
+            size: 2,
+            color: bullet.trailColor || '#FFFF00',
+            alpha: 0.6,
+            fadeOut: true,
+            follow: bullet
+        });
+    }
+}
+```
+
+### 1.3.3 粒子物理模拟
+
+#### 重力与风力
+```javascript
+class ParticlePhysics {
+    static applyGravity(particle, gravity = 9.8) {
+        particle.ay += gravity;
+    }
+    
+    static applyWind(particle, windX, windY) {
+        particle.ax += windX;
+        particle.ay += windY;
+    }
+    
+    static applyDrag(particle, dragCoefficient = 0.98) {
+        particle.vx *= dragCoefficient;
+        particle.vy *= dragCoefficient;
+    }
+    
+    static applyTurbulence(particle, intensity = 10) {
+        particle.vx += (Math.random() - 0.5) * intensity;
+        particle.vy += (Math.random() - 0.5) * intensity;
+    }
+}
+```
+
+#### 磁场吸引
+```javascript
+class MagneticField {
+    constructor(x, y, strength) {
+        this.x = x;
+        this.y = y;
+        this.strength = strength;
+        this.radius = 200;
+    }
+    
+    applyTo(particle) {
+        const dx = this.x - particle.x;
+        const dy = this.y - particle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.radius && distance > 0) {
+            const force = this.strength / (distance * distance);
+            particle.ax += (dx / distance) * force;
+            particle.ay += (dy / distance) * force;
+        }
+    }
+}
+```
+
+### 1.3.4 粒子渲染优化
+
+#### 批量渲染
+```javascript
+class ParticleBatchRenderer {
+    constructor(maxParticles = 10000) {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.particleData = new Float32Array(maxParticles * 6); // x,y,size,r,g,b
+    }
+    
+    renderBatch(particles, mainCtx) {
+        // 清空粒子画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 按颜色分组渲染
+        const groups = this.groupByColor(particles);
+        
+        for (const [color, group] of groups) {
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            
+            for (const particle of group) {
+                this.ctx.moveTo(particle.x + particle.size, particle.y);
+                this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            }
+            
+            this.ctx.fill();
+        }
+        
+        // 复制到主画布
+        mainCtx.drawImage(this.canvas, 0, 0);
+    }
+}
+```
+
+#### 粒子LOD（细节层次）
+```javascript
+class ParticleLOD {
+    static getDetailLevel(distance, particleCount) {
+        if (particleCount > 1000) {
+            // 高密度场景降级
+            return 'low';
+        } else if (distance > 500) {
+            // 远距离降级
+            return 'low';
+        } else if (distance > 200) {
+            return 'medium';
+        } else {
+            return 'high';
+        }
+    }
+    
+    static applyLOD(particle, level) {
+        switch(level) {
+            case 'low':
+                particle.skipFrames = 2;  // 隔帧更新
+                particle.useSimpleRender = true;
+                break;
+            case 'medium':
+                particle.skipFrames = 1;
+                particle.useSimpleRender = false;
+                break;
+            case 'high':
+                particle.skipFrames = 0;
+                particle.useSimpleRender = false;
+                break;
+        }
+    }
+}
 ```javascript
 class Sprite {
     constructor(texture, frame) {
@@ -262,9 +5098,753 @@ class Sprite {
 }
 ```
 
+## 1.3 粒子特效引擎
+
+### 1.3.1 粒子系统架构
+
+#### 粒子发射器
+```javascript
+class ParticleEmitter {
+    constructor(config) {
+        this.x = config.x || 0;
+        this.y = config.y || 0;
+        this.emissionRate = config.emissionRate || 10;  // 每秒发射粒子数
+        this.maxParticles = config.maxParticles || 1000;
+        this.particleLife = config.particleLife || 2000; // 毫秒
+        this.emitterLife = config.emitterLife || -1;     // -1表示永久
+        this.particles = [];
+        this.particlePool = [];  // 对象池
+        this.active = true;
+        this.emissionTimer = 0;
+        this.config = config;
+    }
+    
+    emit() {
+        if (!this.active) return;
+        
+        if (this.particles.length >= this.maxParticles) return;
+        
+        // 从对象池获取或创建新粒子
+        let particle = this.particlePool.pop();
+        if (!particle) {
+            particle = new Particle();
+        }
+        
+        // 初始化粒子属性
+        this.initParticle(particle);
+        this.particles.push(particle);
+    }
+    
+    initParticle(particle) {
+        // 位置初始化
+        particle.x = this.x + (Math.random() - 0.5) * this.config.spread;
+        particle.y = this.y;
+        
+        // 速度初始化
+        const angle = this.config.angle + (Math.random() - 0.5) * this.config.angleVariance;
+        const speed = this.config.speed + (Math.random() - 0.5) * this.config.speedVariance;
+        particle.vx = Math.cos(angle) * speed;
+        particle.vy = Math.sin(angle) * speed;
+        
+        // 生命周期
+        particle.life = this.particleLife;
+        particle.maxLife = this.particleLife;
+        
+        // 视觉属性
+        particle.color = this.config.color || '#FFFFFF';
+        particle.size = this.config.size || 4;
+        particle.alpha = 1;
+    }
+    
+    update(deltaTime) {
+        // 更新发射计时器
+        this.emissionTimer += deltaTime;
+        const emissionInterval = 1000 / this.emissionRate;
+        
+        while (this.emissionTimer >= emissionInterval) {
+            this.emit();
+            this.emissionTimer -= emissionInterval;
+        }
+        
+        // 更新所有粒子
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const particle = this.particles[i];
+            particle.update(deltaTime);
+            
+            if (particle.life <= 0) {
+                // 回收到对象池
+                this.particles.splice(i, 1);
+                this.particlePool.push(particle);
+            }
+        }
+    }
+}
+```
+
+#### 粒子类定义
+```javascript
+class Particle {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.ax = 0;  // 加速度
+        this.ay = 0;
+        this.size = 4;
+        this.color = '#FFFFFF';
+        this.alpha = 1;
+        this.rotation = 0;
+        this.rotationSpeed = 0;
+        this.life = 1000;
+        this.maxLife = 1000;
+        this.scale = 1;
+        this.texture = null;
+    }
+    
+    update(deltaTime) {
+        const dt = deltaTime / 1000; // 转换为秒
+        
+        // 物理更新
+        this.vx += this.ax * dt;
+        this.vy += this.ay * dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.rotation += this.rotationSpeed * dt;
+        
+        // 生命周期更新
+        this.life -= deltaTime;
+        const lifeRatio = this.life / this.maxLife;
+        
+        // 淡出效果
+        if (lifeRatio < 0.3) {
+            this.alpha = lifeRatio / 0.3;
+        }
+    }
+    
+    render(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        if (this.texture) {
+            // 绘制纹理粒子
+            const size = this.size * this.scale;
+            ctx.drawImage(this.texture, -size/2, -size/2, size, size);
+        } else {
+            // 绘制几何粒子
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size * this.scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+```
+
+### 1.3.2 粒子特效预设
+
+#### 爆炸特效
+```javascript
+class ExplosionEffect {
+    static create(x, y, size = 'medium') {
+        const configs = {
+            small: {
+                emissionRate: 100,
+                maxParticles: 30,
+                particleLife: 500,
+                speed: 200,
+                speedVariance: 100,
+                spread: 10,
+                size: 3,
+                color: ['#FF6B35', '#FFA500', '#FFFF00'],
+                gravity: 0
+            },
+            medium: {
+                emissionRate: 200,
+                maxParticles: 50,
+                particleLife: 800,
+                speed: 300,
+                speedVariance: 150,
+                spread: 20,
+                size: 5,
+                color: ['#FF4500', '#FF6347', '#FFA500'],
+                gravity: 100
+            },
+            large: {
+                emissionRate: 500,
+                maxParticles: 100,
+                particleLife: 1200,
+                speed: 400,
+                speedVariance: 200,
+                spread: 40,
+                size: 8,
+                color: ['#FF0000', '#FF4500', '#FFFF00'],
+                gravity: 200
+            }
+        };
+        
+        const config = configs[size];
+        const emitter = new ParticleEmitter({
+            x: x,
+            y: y,
+            ...config,
+            emitterLife: 100  // 短暂爆发
+        });
+        
+        return emitter;
+    }
+}
+```
+
+#### 推进器尾焰
+```javascript
+class ThrusterEffect {
+    static create(parent) {
+        return new ParticleEmitter({
+            x: parent.x,
+            y: parent.y + parent.height / 2,
+            emissionRate: 30,
+            maxParticles: 100,
+            particleLife: 400,
+            angle: Math.PI / 2,  // 向下
+            angleVariance: 0.3,
+            speed: 100,
+            speedVariance: 20,
+            size: 6,
+            color: ['#4169E1', '#00BFFF', '#FFFFFF'],
+            fadeOut: true,
+            shrink: true,
+            follow: parent  // 跟随父对象
+        });
+    }
+}
+```
+
+#### 子弹拖尾效果
+```javascript
+class BulletTrail {
+    static create(bullet) {
+        return new ParticleEmitter({
+            x: bullet.x,
+            y: bullet.y,
+            emissionRate: 60,
+            maxParticles: 20,
+            particleLife: 200,
+            angle: bullet.angle + Math.PI,  // 反向
+            angleVariance: 0.1,
+            speed: 50,
+            speedVariance: 10,
+            size: 2,
+            color: bullet.trailColor || '#FFFF00',
+            alpha: 0.6,
+            fadeOut: true,
+            follow: bullet
+        });
+    }
+}
+```
+
+### 1.3.3 粒子物理模拟
+
+#### 重力与风力
+```javascript
+class ParticlePhysics {
+    static applyGravity(particle, gravity = 9.8) {
+        particle.ay += gravity;
+    }
+    
+    static applyWind(particle, windX, windY) {
+        particle.ax += windX;
+        particle.ay += windY;
+    }
+    
+    static applyDrag(particle, dragCoefficient = 0.98) {
+        particle.vx *= dragCoefficient;
+        particle.vy *= dragCoefficient;
+    }
+    
+    static applyTurbulence(particle, intensity = 10) {
+        particle.vx += (Math.random() - 0.5) * intensity;
+        particle.vy += (Math.random() - 0.5) * intensity;
+    }
+}
+```
+
+#### 磁场吸引
+```javascript
+class MagneticField {
+    constructor(x, y, strength) {
+        this.x = x;
+        this.y = y;
+        this.strength = strength;
+        this.radius = 200;
+    }
+    
+    applyTo(particle) {
+        const dx = this.x - particle.x;
+        const dy = this.y - particle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.radius && distance > 0) {
+            const force = this.strength / (distance * distance);
+            particle.ax += (dx / distance) * force;
+            particle.ay += (dy / distance) * force;
+        }
+    }
+}
+```
+
+### 1.3.4 粒子渲染优化
+
+#### 批量渲染
+```javascript
+class ParticleBatchRenderer {
+    constructor(maxParticles = 10000) {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.particleData = new Float32Array(maxParticles * 6); // x,y,size,r,g,b
+    }
+    
+    renderBatch(particles, mainCtx) {
+        // 清空粒子画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 按颜色分组渲染
+        const groups = this.groupByColor(particles);
+        
+        for (const [color, group] of groups) {
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            
+            for (const particle of group) {
+                this.ctx.moveTo(particle.x + particle.size, particle.y);
+                this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            }
+            
+            this.ctx.fill();
+        }
+        
+        // 复制到主画布
+        mainCtx.drawImage(this.canvas, 0, 0);
+    }
+}
+```
+
+#### 粒子LOD（细节层次）
+```javascript
+class ParticleLOD {
+    static getDetailLevel(distance, particleCount) {
+        if (particleCount > 1000) {
+            // 高密度场景降级
+            return 'low';
+        } else if (distance > 500) {
+            // 远距离降级
+            return 'low';
+        } else if (distance > 200) {
+            return 'medium';
+        } else {
+            return 'high';
+        }
+    }
+    
+    static applyLOD(particle, level) {
+        switch(level) {
+            case 'low':
+                particle.skipFrames = 2;  // 隔帧更新
+                particle.useSimpleRender = true;
+                break;
+            case 'medium':
+                particle.skipFrames = 1;
+                particle.useSimpleRender = false;
+                break;
+            case 'high':
+                particle.skipFrames = 0;
+                particle.useSimpleRender = false;
+                break;
+        }
+    }
+}
+```
+
 ### 1.2.2 动画系统架构
 
 #### 动画控制器
+```
+
+## 1.3 粒子特效引擎
+
+### 1.3.1 粒子系统架构
+
+#### 粒子发射器
+```javascript
+class ParticleEmitter {
+    constructor(config) {
+        this.x = config.x || 0;
+        this.y = config.y || 0;
+        this.emissionRate = config.emissionRate || 10;  // 每秒发射粒子数
+        this.maxParticles = config.maxParticles || 1000;
+        this.particleLife = config.particleLife || 2000; // 毫秒
+        this.emitterLife = config.emitterLife || -1;     // -1表示永久
+        this.particles = [];
+        this.particlePool = [];  // 对象池
+        this.active = true;
+        this.emissionTimer = 0;
+        this.config = config;
+    }
+    
+    emit() {
+        if (!this.active) return;
+        
+        if (this.particles.length >= this.maxParticles) return;
+        
+        // 从对象池获取或创建新粒子
+        let particle = this.particlePool.pop();
+        if (!particle) {
+            particle = new Particle();
+        }
+        
+        // 初始化粒子属性
+        this.initParticle(particle);
+        this.particles.push(particle);
+    }
+    
+    initParticle(particle) {
+        // 位置初始化
+        particle.x = this.x + (Math.random() - 0.5) * this.config.spread;
+        particle.y = this.y;
+        
+        // 速度初始化
+        const angle = this.config.angle + (Math.random() - 0.5) * this.config.angleVariance;
+        const speed = this.config.speed + (Math.random() - 0.5) * this.config.speedVariance;
+        particle.vx = Math.cos(angle) * speed;
+        particle.vy = Math.sin(angle) * speed;
+        
+        // 生命周期
+        particle.life = this.particleLife;
+        particle.maxLife = this.particleLife;
+        
+        // 视觉属性
+        particle.color = this.config.color || '#FFFFFF';
+        particle.size = this.config.size || 4;
+        particle.alpha = 1;
+    }
+    
+    update(deltaTime) {
+        // 更新发射计时器
+        this.emissionTimer += deltaTime;
+        const emissionInterval = 1000 / this.emissionRate;
+        
+        while (this.emissionTimer >= emissionInterval) {
+            this.emit();
+            this.emissionTimer -= emissionInterval;
+        }
+        
+        // 更新所有粒子
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const particle = this.particles[i];
+            particle.update(deltaTime);
+            
+            if (particle.life <= 0) {
+                // 回收到对象池
+                this.particles.splice(i, 1);
+                this.particlePool.push(particle);
+            }
+        }
+    }
+}
+```
+
+#### 粒子类定义
+```javascript
+class Particle {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.ax = 0;  // 加速度
+        this.ay = 0;
+        this.size = 4;
+        this.color = '#FFFFFF';
+        this.alpha = 1;
+        this.rotation = 0;
+        this.rotationSpeed = 0;
+        this.life = 1000;
+        this.maxLife = 1000;
+        this.scale = 1;
+        this.texture = null;
+    }
+    
+    update(deltaTime) {
+        const dt = deltaTime / 1000; // 转换为秒
+        
+        // 物理更新
+        this.vx += this.ax * dt;
+        this.vy += this.ay * dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.rotation += this.rotationSpeed * dt;
+        
+        // 生命周期更新
+        this.life -= deltaTime;
+        const lifeRatio = this.life / this.maxLife;
+        
+        // 淡出效果
+        if (lifeRatio < 0.3) {
+            this.alpha = lifeRatio / 0.3;
+        }
+    }
+    
+    render(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        if (this.texture) {
+            // 绘制纹理粒子
+            const size = this.size * this.scale;
+            ctx.drawImage(this.texture, -size/2, -size/2, size, size);
+        } else {
+            // 绘制几何粒子
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size * this.scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+```
+
+### 1.3.2 粒子特效预设
+
+#### 爆炸特效
+```javascript
+class ExplosionEffect {
+    static create(x, y, size = 'medium') {
+        const configs = {
+            small: {
+                emissionRate: 100,
+                maxParticles: 30,
+                particleLife: 500,
+                speed: 200,
+                speedVariance: 100,
+                spread: 10,
+                size: 3,
+                color: ['#FF6B35', '#FFA500', '#FFFF00'],
+                gravity: 0
+            },
+            medium: {
+                emissionRate: 200,
+                maxParticles: 50,
+                particleLife: 800,
+                speed: 300,
+                speedVariance: 150,
+                spread: 20,
+                size: 5,
+                color: ['#FF4500', '#FF6347', '#FFA500'],
+                gravity: 100
+            },
+            large: {
+                emissionRate: 500,
+                maxParticles: 100,
+                particleLife: 1200,
+                speed: 400,
+                speedVariance: 200,
+                spread: 40,
+                size: 8,
+                color: ['#FF0000', '#FF4500', '#FFFF00'],
+                gravity: 200
+            }
+        };
+        
+        const config = configs[size];
+        const emitter = new ParticleEmitter({
+            x: x,
+            y: y,
+            ...config,
+            emitterLife: 100  // 短暂爆发
+        });
+        
+        return emitter;
+    }
+}
+```
+
+#### 推进器尾焰
+```javascript
+class ThrusterEffect {
+    static create(parent) {
+        return new ParticleEmitter({
+            x: parent.x,
+            y: parent.y + parent.height / 2,
+            emissionRate: 30,
+            maxParticles: 100,
+            particleLife: 400,
+            angle: Math.PI / 2,  // 向下
+            angleVariance: 0.3,
+            speed: 100,
+            speedVariance: 20,
+            size: 6,
+            color: ['#4169E1', '#00BFFF', '#FFFFFF'],
+            fadeOut: true,
+            shrink: true,
+            follow: parent  // 跟随父对象
+        });
+    }
+}
+```
+
+#### 子弹拖尾效果
+```javascript
+class BulletTrail {
+    static create(bullet) {
+        return new ParticleEmitter({
+            x: bullet.x,
+            y: bullet.y,
+            emissionRate: 60,
+            maxParticles: 20,
+            particleLife: 200,
+            angle: bullet.angle + Math.PI,  // 反向
+            angleVariance: 0.1,
+            speed: 50,
+            speedVariance: 10,
+            size: 2,
+            color: bullet.trailColor || '#FFFF00',
+            alpha: 0.6,
+            fadeOut: true,
+            follow: bullet
+        });
+    }
+}
+```
+
+### 1.3.3 粒子物理模拟
+
+#### 重力与风力
+```javascript
+class ParticlePhysics {
+    static applyGravity(particle, gravity = 9.8) {
+        particle.ay += gravity;
+    }
+    
+    static applyWind(particle, windX, windY) {
+        particle.ax += windX;
+        particle.ay += windY;
+    }
+    
+    static applyDrag(particle, dragCoefficient = 0.98) {
+        particle.vx *= dragCoefficient;
+        particle.vy *= dragCoefficient;
+    }
+    
+    static applyTurbulence(particle, intensity = 10) {
+        particle.vx += (Math.random() - 0.5) * intensity;
+        particle.vy += (Math.random() - 0.5) * intensity;
+    }
+}
+```
+
+#### 磁场吸引
+```javascript
+class MagneticField {
+    constructor(x, y, strength) {
+        this.x = x;
+        this.y = y;
+        this.strength = strength;
+        this.radius = 200;
+    }
+    
+    applyTo(particle) {
+        const dx = this.x - particle.x;
+        const dy = this.y - particle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.radius && distance > 0) {
+            const force = this.strength / (distance * distance);
+            particle.ax += (dx / distance) * force;
+            particle.ay += (dy / distance) * force;
+        }
+    }
+}
+```
+
+### 1.3.4 粒子渲染优化
+
+#### 批量渲染
+```javascript
+class ParticleBatchRenderer {
+    constructor(maxParticles = 10000) {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.particleData = new Float32Array(maxParticles * 6); // x,y,size,r,g,b
+    }
+    
+    renderBatch(particles, mainCtx) {
+        // 清空粒子画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 按颜色分组渲染
+        const groups = this.groupByColor(particles);
+        
+        for (const [color, group] of groups) {
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            
+            for (const particle of group) {
+                this.ctx.moveTo(particle.x + particle.size, particle.y);
+                this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            }
+            
+            this.ctx.fill();
+        }
+        
+        // 复制到主画布
+        mainCtx.drawImage(this.canvas, 0, 0);
+    }
+}
+```
+
+#### 粒子LOD（细节层次）
+```javascript
+class ParticleLOD {
+    static getDetailLevel(distance, particleCount) {
+        if (particleCount > 1000) {
+            // 高密度场景降级
+            return 'low';
+        } else if (distance > 500) {
+            // 远距离降级
+            return 'low';
+        } else if (distance > 200) {
+            return 'medium';
+        } else {
+            return 'high';
+        }
+    }
+    
+    static applyLOD(particle, level) {
+        switch(level) {
+            case 'low':
+                particle.skipFrames = 2;  // 隔帧更新
+                particle.useSimpleRender = true;
+                break;
+            case 'medium':
+                particle.skipFrames = 1;
+                particle.useSimpleRender = false;
+                break;
+            case 'high':
+                particle.skipFrames = 0;
+                particle.useSimpleRender = false;
+                break;
+        }
+    }
+}
 ```javascript
 class AnimationController {
     constructor(sprite) {
@@ -323,9 +5903,753 @@ class AnimationController {
 }
 ```
 
+## 1.3 粒子特效引擎
+
+### 1.3.1 粒子系统架构
+
+#### 粒子发射器
+```javascript
+class ParticleEmitter {
+    constructor(config) {
+        this.x = config.x || 0;
+        this.y = config.y || 0;
+        this.emissionRate = config.emissionRate || 10;  // 每秒发射粒子数
+        this.maxParticles = config.maxParticles || 1000;
+        this.particleLife = config.particleLife || 2000; // 毫秒
+        this.emitterLife = config.emitterLife || -1;     // -1表示永久
+        this.particles = [];
+        this.particlePool = [];  // 对象池
+        this.active = true;
+        this.emissionTimer = 0;
+        this.config = config;
+    }
+    
+    emit() {
+        if (!this.active) return;
+        
+        if (this.particles.length >= this.maxParticles) return;
+        
+        // 从对象池获取或创建新粒子
+        let particle = this.particlePool.pop();
+        if (!particle) {
+            particle = new Particle();
+        }
+        
+        // 初始化粒子属性
+        this.initParticle(particle);
+        this.particles.push(particle);
+    }
+    
+    initParticle(particle) {
+        // 位置初始化
+        particle.x = this.x + (Math.random() - 0.5) * this.config.spread;
+        particle.y = this.y;
+        
+        // 速度初始化
+        const angle = this.config.angle + (Math.random() - 0.5) * this.config.angleVariance;
+        const speed = this.config.speed + (Math.random() - 0.5) * this.config.speedVariance;
+        particle.vx = Math.cos(angle) * speed;
+        particle.vy = Math.sin(angle) * speed;
+        
+        // 生命周期
+        particle.life = this.particleLife;
+        particle.maxLife = this.particleLife;
+        
+        // 视觉属性
+        particle.color = this.config.color || '#FFFFFF';
+        particle.size = this.config.size || 4;
+        particle.alpha = 1;
+    }
+    
+    update(deltaTime) {
+        // 更新发射计时器
+        this.emissionTimer += deltaTime;
+        const emissionInterval = 1000 / this.emissionRate;
+        
+        while (this.emissionTimer >= emissionInterval) {
+            this.emit();
+            this.emissionTimer -= emissionInterval;
+        }
+        
+        // 更新所有粒子
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const particle = this.particles[i];
+            particle.update(deltaTime);
+            
+            if (particle.life <= 0) {
+                // 回收到对象池
+                this.particles.splice(i, 1);
+                this.particlePool.push(particle);
+            }
+        }
+    }
+}
+```
+
+#### 粒子类定义
+```javascript
+class Particle {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.ax = 0;  // 加速度
+        this.ay = 0;
+        this.size = 4;
+        this.color = '#FFFFFF';
+        this.alpha = 1;
+        this.rotation = 0;
+        this.rotationSpeed = 0;
+        this.life = 1000;
+        this.maxLife = 1000;
+        this.scale = 1;
+        this.texture = null;
+    }
+    
+    update(deltaTime) {
+        const dt = deltaTime / 1000; // 转换为秒
+        
+        // 物理更新
+        this.vx += this.ax * dt;
+        this.vy += this.ay * dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.rotation += this.rotationSpeed * dt;
+        
+        // 生命周期更新
+        this.life -= deltaTime;
+        const lifeRatio = this.life / this.maxLife;
+        
+        // 淡出效果
+        if (lifeRatio < 0.3) {
+            this.alpha = lifeRatio / 0.3;
+        }
+    }
+    
+    render(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        if (this.texture) {
+            // 绘制纹理粒子
+            const size = this.size * this.scale;
+            ctx.drawImage(this.texture, -size/2, -size/2, size, size);
+        } else {
+            // 绘制几何粒子
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size * this.scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+```
+
+### 1.3.2 粒子特效预设
+
+#### 爆炸特效
+```javascript
+class ExplosionEffect {
+    static create(x, y, size = 'medium') {
+        const configs = {
+            small: {
+                emissionRate: 100,
+                maxParticles: 30,
+                particleLife: 500,
+                speed: 200,
+                speedVariance: 100,
+                spread: 10,
+                size: 3,
+                color: ['#FF6B35', '#FFA500', '#FFFF00'],
+                gravity: 0
+            },
+            medium: {
+                emissionRate: 200,
+                maxParticles: 50,
+                particleLife: 800,
+                speed: 300,
+                speedVariance: 150,
+                spread: 20,
+                size: 5,
+                color: ['#FF4500', '#FF6347', '#FFA500'],
+                gravity: 100
+            },
+            large: {
+                emissionRate: 500,
+                maxParticles: 100,
+                particleLife: 1200,
+                speed: 400,
+                speedVariance: 200,
+                spread: 40,
+                size: 8,
+                color: ['#FF0000', '#FF4500', '#FFFF00'],
+                gravity: 200
+            }
+        };
+        
+        const config = configs[size];
+        const emitter = new ParticleEmitter({
+            x: x,
+            y: y,
+            ...config,
+            emitterLife: 100  // 短暂爆发
+        });
+        
+        return emitter;
+    }
+}
+```
+
+#### 推进器尾焰
+```javascript
+class ThrusterEffect {
+    static create(parent) {
+        return new ParticleEmitter({
+            x: parent.x,
+            y: parent.y + parent.height / 2,
+            emissionRate: 30,
+            maxParticles: 100,
+            particleLife: 400,
+            angle: Math.PI / 2,  // 向下
+            angleVariance: 0.3,
+            speed: 100,
+            speedVariance: 20,
+            size: 6,
+            color: ['#4169E1', '#00BFFF', '#FFFFFF'],
+            fadeOut: true,
+            shrink: true,
+            follow: parent  // 跟随父对象
+        });
+    }
+}
+```
+
+#### 子弹拖尾效果
+```javascript
+class BulletTrail {
+    static create(bullet) {
+        return new ParticleEmitter({
+            x: bullet.x,
+            y: bullet.y,
+            emissionRate: 60,
+            maxParticles: 20,
+            particleLife: 200,
+            angle: bullet.angle + Math.PI,  // 反向
+            angleVariance: 0.1,
+            speed: 50,
+            speedVariance: 10,
+            size: 2,
+            color: bullet.trailColor || '#FFFF00',
+            alpha: 0.6,
+            fadeOut: true,
+            follow: bullet
+        });
+    }
+}
+```
+
+### 1.3.3 粒子物理模拟
+
+#### 重力与风力
+```javascript
+class ParticlePhysics {
+    static applyGravity(particle, gravity = 9.8) {
+        particle.ay += gravity;
+    }
+    
+    static applyWind(particle, windX, windY) {
+        particle.ax += windX;
+        particle.ay += windY;
+    }
+    
+    static applyDrag(particle, dragCoefficient = 0.98) {
+        particle.vx *= dragCoefficient;
+        particle.vy *= dragCoefficient;
+    }
+    
+    static applyTurbulence(particle, intensity = 10) {
+        particle.vx += (Math.random() - 0.5) * intensity;
+        particle.vy += (Math.random() - 0.5) * intensity;
+    }
+}
+```
+
+#### 磁场吸引
+```javascript
+class MagneticField {
+    constructor(x, y, strength) {
+        this.x = x;
+        this.y = y;
+        this.strength = strength;
+        this.radius = 200;
+    }
+    
+    applyTo(particle) {
+        const dx = this.x - particle.x;
+        const dy = this.y - particle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.radius && distance > 0) {
+            const force = this.strength / (distance * distance);
+            particle.ax += (dx / distance) * force;
+            particle.ay += (dy / distance) * force;
+        }
+    }
+}
+```
+
+### 1.3.4 粒子渲染优化
+
+#### 批量渲染
+```javascript
+class ParticleBatchRenderer {
+    constructor(maxParticles = 10000) {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.particleData = new Float32Array(maxParticles * 6); // x,y,size,r,g,b
+    }
+    
+    renderBatch(particles, mainCtx) {
+        // 清空粒子画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 按颜色分组渲染
+        const groups = this.groupByColor(particles);
+        
+        for (const [color, group] of groups) {
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            
+            for (const particle of group) {
+                this.ctx.moveTo(particle.x + particle.size, particle.y);
+                this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            }
+            
+            this.ctx.fill();
+        }
+        
+        // 复制到主画布
+        mainCtx.drawImage(this.canvas, 0, 0);
+    }
+}
+```
+
+#### 粒子LOD（细节层次）
+```javascript
+class ParticleLOD {
+    static getDetailLevel(distance, particleCount) {
+        if (particleCount > 1000) {
+            // 高密度场景降级
+            return 'low';
+        } else if (distance > 500) {
+            // 远距离降级
+            return 'low';
+        } else if (distance > 200) {
+            return 'medium';
+        } else {
+            return 'high';
+        }
+    }
+    
+    static applyLOD(particle, level) {
+        switch(level) {
+            case 'low':
+                particle.skipFrames = 2;  // 隔帧更新
+                particle.useSimpleRender = true;
+                break;
+            case 'medium':
+                particle.skipFrames = 1;
+                particle.useSimpleRender = false;
+                break;
+            case 'high':
+                particle.skipFrames = 0;
+                particle.useSimpleRender = false;
+                break;
+        }
+    }
+}
+```
+
 ### 1.2.3 动画混合与过渡
 
 #### 动画混合器
+```
+
+## 1.3 粒子特效引擎
+
+### 1.3.1 粒子系统架构
+
+#### 粒子发射器
+```javascript
+class ParticleEmitter {
+    constructor(config) {
+        this.x = config.x || 0;
+        this.y = config.y || 0;
+        this.emissionRate = config.emissionRate || 10;  // 每秒发射粒子数
+        this.maxParticles = config.maxParticles || 1000;
+        this.particleLife = config.particleLife || 2000; // 毫秒
+        this.emitterLife = config.emitterLife || -1;     // -1表示永久
+        this.particles = [];
+        this.particlePool = [];  // 对象池
+        this.active = true;
+        this.emissionTimer = 0;
+        this.config = config;
+    }
+    
+    emit() {
+        if (!this.active) return;
+        
+        if (this.particles.length >= this.maxParticles) return;
+        
+        // 从对象池获取或创建新粒子
+        let particle = this.particlePool.pop();
+        if (!particle) {
+            particle = new Particle();
+        }
+        
+        // 初始化粒子属性
+        this.initParticle(particle);
+        this.particles.push(particle);
+    }
+    
+    initParticle(particle) {
+        // 位置初始化
+        particle.x = this.x + (Math.random() - 0.5) * this.config.spread;
+        particle.y = this.y;
+        
+        // 速度初始化
+        const angle = this.config.angle + (Math.random() - 0.5) * this.config.angleVariance;
+        const speed = this.config.speed + (Math.random() - 0.5) * this.config.speedVariance;
+        particle.vx = Math.cos(angle) * speed;
+        particle.vy = Math.sin(angle) * speed;
+        
+        // 生命周期
+        particle.life = this.particleLife;
+        particle.maxLife = this.particleLife;
+        
+        // 视觉属性
+        particle.color = this.config.color || '#FFFFFF';
+        particle.size = this.config.size || 4;
+        particle.alpha = 1;
+    }
+    
+    update(deltaTime) {
+        // 更新发射计时器
+        this.emissionTimer += deltaTime;
+        const emissionInterval = 1000 / this.emissionRate;
+        
+        while (this.emissionTimer >= emissionInterval) {
+            this.emit();
+            this.emissionTimer -= emissionInterval;
+        }
+        
+        // 更新所有粒子
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const particle = this.particles[i];
+            particle.update(deltaTime);
+            
+            if (particle.life <= 0) {
+                // 回收到对象池
+                this.particles.splice(i, 1);
+                this.particlePool.push(particle);
+            }
+        }
+    }
+}
+```
+
+#### 粒子类定义
+```javascript
+class Particle {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.ax = 0;  // 加速度
+        this.ay = 0;
+        this.size = 4;
+        this.color = '#FFFFFF';
+        this.alpha = 1;
+        this.rotation = 0;
+        this.rotationSpeed = 0;
+        this.life = 1000;
+        this.maxLife = 1000;
+        this.scale = 1;
+        this.texture = null;
+    }
+    
+    update(deltaTime) {
+        const dt = deltaTime / 1000; // 转换为秒
+        
+        // 物理更新
+        this.vx += this.ax * dt;
+        this.vy += this.ay * dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.rotation += this.rotationSpeed * dt;
+        
+        // 生命周期更新
+        this.life -= deltaTime;
+        const lifeRatio = this.life / this.maxLife;
+        
+        // 淡出效果
+        if (lifeRatio < 0.3) {
+            this.alpha = lifeRatio / 0.3;
+        }
+    }
+    
+    render(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        if (this.texture) {
+            // 绘制纹理粒子
+            const size = this.size * this.scale;
+            ctx.drawImage(this.texture, -size/2, -size/2, size, size);
+        } else {
+            // 绘制几何粒子
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size * this.scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+```
+
+### 1.3.2 粒子特效预设
+
+#### 爆炸特效
+```javascript
+class ExplosionEffect {
+    static create(x, y, size = 'medium') {
+        const configs = {
+            small: {
+                emissionRate: 100,
+                maxParticles: 30,
+                particleLife: 500,
+                speed: 200,
+                speedVariance: 100,
+                spread: 10,
+                size: 3,
+                color: ['#FF6B35', '#FFA500', '#FFFF00'],
+                gravity: 0
+            },
+            medium: {
+                emissionRate: 200,
+                maxParticles: 50,
+                particleLife: 800,
+                speed: 300,
+                speedVariance: 150,
+                spread: 20,
+                size: 5,
+                color: ['#FF4500', '#FF6347', '#FFA500'],
+                gravity: 100
+            },
+            large: {
+                emissionRate: 500,
+                maxParticles: 100,
+                particleLife: 1200,
+                speed: 400,
+                speedVariance: 200,
+                spread: 40,
+                size: 8,
+                color: ['#FF0000', '#FF4500', '#FFFF00'],
+                gravity: 200
+            }
+        };
+        
+        const config = configs[size];
+        const emitter = new ParticleEmitter({
+            x: x,
+            y: y,
+            ...config,
+            emitterLife: 100  // 短暂爆发
+        });
+        
+        return emitter;
+    }
+}
+```
+
+#### 推进器尾焰
+```javascript
+class ThrusterEffect {
+    static create(parent) {
+        return new ParticleEmitter({
+            x: parent.x,
+            y: parent.y + parent.height / 2,
+            emissionRate: 30,
+            maxParticles: 100,
+            particleLife: 400,
+            angle: Math.PI / 2,  // 向下
+            angleVariance: 0.3,
+            speed: 100,
+            speedVariance: 20,
+            size: 6,
+            color: ['#4169E1', '#00BFFF', '#FFFFFF'],
+            fadeOut: true,
+            shrink: true,
+            follow: parent  // 跟随父对象
+        });
+    }
+}
+```
+
+#### 子弹拖尾效果
+```javascript
+class BulletTrail {
+    static create(bullet) {
+        return new ParticleEmitter({
+            x: bullet.x,
+            y: bullet.y,
+            emissionRate: 60,
+            maxParticles: 20,
+            particleLife: 200,
+            angle: bullet.angle + Math.PI,  // 反向
+            angleVariance: 0.1,
+            speed: 50,
+            speedVariance: 10,
+            size: 2,
+            color: bullet.trailColor || '#FFFF00',
+            alpha: 0.6,
+            fadeOut: true,
+            follow: bullet
+        });
+    }
+}
+```
+
+### 1.3.3 粒子物理模拟
+
+#### 重力与风力
+```javascript
+class ParticlePhysics {
+    static applyGravity(particle, gravity = 9.8) {
+        particle.ay += gravity;
+    }
+    
+    static applyWind(particle, windX, windY) {
+        particle.ax += windX;
+        particle.ay += windY;
+    }
+    
+    static applyDrag(particle, dragCoefficient = 0.98) {
+        particle.vx *= dragCoefficient;
+        particle.vy *= dragCoefficient;
+    }
+    
+    static applyTurbulence(particle, intensity = 10) {
+        particle.vx += (Math.random() - 0.5) * intensity;
+        particle.vy += (Math.random() - 0.5) * intensity;
+    }
+}
+```
+
+#### 磁场吸引
+```javascript
+class MagneticField {
+    constructor(x, y, strength) {
+        this.x = x;
+        this.y = y;
+        this.strength = strength;
+        this.radius = 200;
+    }
+    
+    applyTo(particle) {
+        const dx = this.x - particle.x;
+        const dy = this.y - particle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.radius && distance > 0) {
+            const force = this.strength / (distance * distance);
+            particle.ax += (dx / distance) * force;
+            particle.ay += (dy / distance) * force;
+        }
+    }
+}
+```
+
+### 1.3.4 粒子渲染优化
+
+#### 批量渲染
+```javascript
+class ParticleBatchRenderer {
+    constructor(maxParticles = 10000) {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.particleData = new Float32Array(maxParticles * 6); // x,y,size,r,g,b
+    }
+    
+    renderBatch(particles, mainCtx) {
+        // 清空粒子画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 按颜色分组渲染
+        const groups = this.groupByColor(particles);
+        
+        for (const [color, group] of groups) {
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            
+            for (const particle of group) {
+                this.ctx.moveTo(particle.x + particle.size, particle.y);
+                this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            }
+            
+            this.ctx.fill();
+        }
+        
+        // 复制到主画布
+        mainCtx.drawImage(this.canvas, 0, 0);
+    }
+}
+```
+
+#### 粒子LOD（细节层次）
+```javascript
+class ParticleLOD {
+    static getDetailLevel(distance, particleCount) {
+        if (particleCount > 1000) {
+            // 高密度场景降级
+            return 'low';
+        } else if (distance > 500) {
+            // 远距离降级
+            return 'low';
+        } else if (distance > 200) {
+            return 'medium';
+        } else {
+            return 'high';
+        }
+    }
+    
+    static applyLOD(particle, level) {
+        switch(level) {
+            case 'low':
+                particle.skipFrames = 2;  // 隔帧更新
+                particle.useSimpleRender = true;
+                break;
+            case 'medium':
+                particle.skipFrames = 1;
+                particle.useSimpleRender = false;
+                break;
+            case 'high':
+                particle.skipFrames = 0;
+                particle.useSimpleRender = false;
+                break;
+        }
+    }
+}
 ```javascript
 class AnimationMixer {
     constructor() {
@@ -353,6 +6677,378 @@ class AnimationMixer {
 }
 ```
 
+## 1.3 粒子特效引擎
+
+### 1.3.1 粒子系统架构
+
+#### 粒子发射器
+```javascript
+class ParticleEmitter {
+    constructor(config) {
+        this.x = config.x || 0;
+        this.y = config.y || 0;
+        this.emissionRate = config.emissionRate || 10;  // 每秒发射粒子数
+        this.maxParticles = config.maxParticles || 1000;
+        this.particleLife = config.particleLife || 2000; // 毫秒
+        this.emitterLife = config.emitterLife || -1;     // -1表示永久
+        this.particles = [];
+        this.particlePool = [];  // 对象池
+        this.active = true;
+        this.emissionTimer = 0;
+        this.config = config;
+    }
+    
+    emit() {
+        if (!this.active) return;
+        
+        if (this.particles.length >= this.maxParticles) return;
+        
+        // 从对象池获取或创建新粒子
+        let particle = this.particlePool.pop();
+        if (!particle) {
+            particle = new Particle();
+        }
+        
+        // 初始化粒子属性
+        this.initParticle(particle);
+        this.particles.push(particle);
+    }
+    
+    initParticle(particle) {
+        // 位置初始化
+        particle.x = this.x + (Math.random() - 0.5) * this.config.spread;
+        particle.y = this.y;
+        
+        // 速度初始化
+        const angle = this.config.angle + (Math.random() - 0.5) * this.config.angleVariance;
+        const speed = this.config.speed + (Math.random() - 0.5) * this.config.speedVariance;
+        particle.vx = Math.cos(angle) * speed;
+        particle.vy = Math.sin(angle) * speed;
+        
+        // 生命周期
+        particle.life = this.particleLife;
+        particle.maxLife = this.particleLife;
+        
+        // 视觉属性
+        particle.color = this.config.color || '#FFFFFF';
+        particle.size = this.config.size || 4;
+        particle.alpha = 1;
+    }
+    
+    update(deltaTime) {
+        // 更新发射计时器
+        this.emissionTimer += deltaTime;
+        const emissionInterval = 1000 / this.emissionRate;
+        
+        while (this.emissionTimer >= emissionInterval) {
+            this.emit();
+            this.emissionTimer -= emissionInterval;
+        }
+        
+        // 更新所有粒子
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const particle = this.particles[i];
+            particle.update(deltaTime);
+            
+            if (particle.life <= 0) {
+                // 回收到对象池
+                this.particles.splice(i, 1);
+                this.particlePool.push(particle);
+            }
+        }
+    }
+}
+```
+
+#### 粒子类定义
+```javascript
+class Particle {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.ax = 0;  // 加速度
+        this.ay = 0;
+        this.size = 4;
+        this.color = '#FFFFFF';
+        this.alpha = 1;
+        this.rotation = 0;
+        this.rotationSpeed = 0;
+        this.life = 1000;
+        this.maxLife = 1000;
+        this.scale = 1;
+        this.texture = null;
+    }
+    
+    update(deltaTime) {
+        const dt = deltaTime / 1000; // 转换为秒
+        
+        // 物理更新
+        this.vx += this.ax * dt;
+        this.vy += this.ay * dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.rotation += this.rotationSpeed * dt;
+        
+        // 生命周期更新
+        this.life -= deltaTime;
+        const lifeRatio = this.life / this.maxLife;
+        
+        // 淡出效果
+        if (lifeRatio < 0.3) {
+            this.alpha = lifeRatio / 0.3;
+        }
+    }
+    
+    render(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        if (this.texture) {
+            // 绘制纹理粒子
+            const size = this.size * this.scale;
+            ctx.drawImage(this.texture, -size/2, -size/2, size, size);
+        } else {
+            // 绘制几何粒子
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size * this.scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+```
+
+### 1.3.2 粒子特效预设
+
+#### 爆炸特效
+```javascript
+class ExplosionEffect {
+    static create(x, y, size = 'medium') {
+        const configs = {
+            small: {
+                emissionRate: 100,
+                maxParticles: 30,
+                particleLife: 500,
+                speed: 200,
+                speedVariance: 100,
+                spread: 10,
+                size: 3,
+                color: ['#FF6B35', '#FFA500', '#FFFF00'],
+                gravity: 0
+            },
+            medium: {
+                emissionRate: 200,
+                maxParticles: 50,
+                particleLife: 800,
+                speed: 300,
+                speedVariance: 150,
+                spread: 20,
+                size: 5,
+                color: ['#FF4500', '#FF6347', '#FFA500'],
+                gravity: 100
+            },
+            large: {
+                emissionRate: 500,
+                maxParticles: 100,
+                particleLife: 1200,
+                speed: 400,
+                speedVariance: 200,
+                spread: 40,
+                size: 8,
+                color: ['#FF0000', '#FF4500', '#FFFF00'],
+                gravity: 200
+            }
+        };
+        
+        const config = configs[size];
+        const emitter = new ParticleEmitter({
+            x: x,
+            y: y,
+            ...config,
+            emitterLife: 100  // 短暂爆发
+        });
+        
+        return emitter;
+    }
+}
+```
+
+#### 推进器尾焰
+```javascript
+class ThrusterEffect {
+    static create(parent) {
+        return new ParticleEmitter({
+            x: parent.x,
+            y: parent.y + parent.height / 2,
+            emissionRate: 30,
+            maxParticles: 100,
+            particleLife: 400,
+            angle: Math.PI / 2,  // 向下
+            angleVariance: 0.3,
+            speed: 100,
+            speedVariance: 20,
+            size: 6,
+            color: ['#4169E1', '#00BFFF', '#FFFFFF'],
+            fadeOut: true,
+            shrink: true,
+            follow: parent  // 跟随父对象
+        });
+    }
+}
+```
+
+#### 子弹拖尾效果
+```javascript
+class BulletTrail {
+    static create(bullet) {
+        return new ParticleEmitter({
+            x: bullet.x,
+            y: bullet.y,
+            emissionRate: 60,
+            maxParticles: 20,
+            particleLife: 200,
+            angle: bullet.angle + Math.PI,  // 反向
+            angleVariance: 0.1,
+            speed: 50,
+            speedVariance: 10,
+            size: 2,
+            color: bullet.trailColor || '#FFFF00',
+            alpha: 0.6,
+            fadeOut: true,
+            follow: bullet
+        });
+    }
+}
+```
+
+### 1.3.3 粒子物理模拟
+
+#### 重力与风力
+```javascript
+class ParticlePhysics {
+    static applyGravity(particle, gravity = 9.8) {
+        particle.ay += gravity;
+    }
+    
+    static applyWind(particle, windX, windY) {
+        particle.ax += windX;
+        particle.ay += windY;
+    }
+    
+    static applyDrag(particle, dragCoefficient = 0.98) {
+        particle.vx *= dragCoefficient;
+        particle.vy *= dragCoefficient;
+    }
+    
+    static applyTurbulence(particle, intensity = 10) {
+        particle.vx += (Math.random() - 0.5) * intensity;
+        particle.vy += (Math.random() - 0.5) * intensity;
+    }
+}
+```
+
+#### 磁场吸引
+```javascript
+class MagneticField {
+    constructor(x, y, strength) {
+        this.x = x;
+        this.y = y;
+        this.strength = strength;
+        this.radius = 200;
+    }
+    
+    applyTo(particle) {
+        const dx = this.x - particle.x;
+        const dy = this.y - particle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.radius && distance > 0) {
+            const force = this.strength / (distance * distance);
+            particle.ax += (dx / distance) * force;
+            particle.ay += (dy / distance) * force;
+        }
+    }
+}
+```
+
+### 1.3.4 粒子渲染优化
+
+#### 批量渲染
+```javascript
+class ParticleBatchRenderer {
+    constructor(maxParticles = 10000) {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.particleData = new Float32Array(maxParticles * 6); // x,y,size,r,g,b
+    }
+    
+    renderBatch(particles, mainCtx) {
+        // 清空粒子画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 按颜色分组渲染
+        const groups = this.groupByColor(particles);
+        
+        for (const [color, group] of groups) {
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            
+            for (const particle of group) {
+                this.ctx.moveTo(particle.x + particle.size, particle.y);
+                this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            }
+            
+            this.ctx.fill();
+        }
+        
+        // 复制到主画布
+        mainCtx.drawImage(this.canvas, 0, 0);
+    }
+}
+```
+
+#### 粒子LOD（细节层次）
+```javascript
+class ParticleLOD {
+    static getDetailLevel(distance, particleCount) {
+        if (particleCount > 1000) {
+            // 高密度场景降级
+            return 'low';
+        } else if (distance > 500) {
+            // 远距离降级
+            return 'low';
+        } else if (distance > 200) {
+            return 'medium';
+        } else {
+            return 'high';
+        }
+    }
+    
+    static applyLOD(particle, level) {
+        switch(level) {
+            case 'low':
+                particle.skipFrames = 2;  // 隔帧更新
+                particle.useSimpleRender = true;
+                break;
+            case 'medium':
+                particle.skipFrames = 1;
+                particle.useSimpleRender = false;
+                break;
+            case 'high':
+                particle.skipFrames = 0;
+                particle.useSimpleRender = false;
+                break;
+        }
+    }
+}
+```
+
 ### 1.2.4 特殊动画效果
 
 #### 帧动画特效
@@ -362,6 +7058,378 @@ class AnimationMixer {
 - **受击闪烁**：快速切换可见性
 
 #### 程序动画
+```
+
+## 1.3 粒子特效引擎
+
+### 1.3.1 粒子系统架构
+
+#### 粒子发射器
+```javascript
+class ParticleEmitter {
+    constructor(config) {
+        this.x = config.x || 0;
+        this.y = config.y || 0;
+        this.emissionRate = config.emissionRate || 10;  // 每秒发射粒子数
+        this.maxParticles = config.maxParticles || 1000;
+        this.particleLife = config.particleLife || 2000; // 毫秒
+        this.emitterLife = config.emitterLife || -1;     // -1表示永久
+        this.particles = [];
+        this.particlePool = [];  // 对象池
+        this.active = true;
+        this.emissionTimer = 0;
+        this.config = config;
+    }
+    
+    emit() {
+        if (!this.active) return;
+        
+        if (this.particles.length >= this.maxParticles) return;
+        
+        // 从对象池获取或创建新粒子
+        let particle = this.particlePool.pop();
+        if (!particle) {
+            particle = new Particle();
+        }
+        
+        // 初始化粒子属性
+        this.initParticle(particle);
+        this.particles.push(particle);
+    }
+    
+    initParticle(particle) {
+        // 位置初始化
+        particle.x = this.x + (Math.random() - 0.5) * this.config.spread;
+        particle.y = this.y;
+        
+        // 速度初始化
+        const angle = this.config.angle + (Math.random() - 0.5) * this.config.angleVariance;
+        const speed = this.config.speed + (Math.random() - 0.5) * this.config.speedVariance;
+        particle.vx = Math.cos(angle) * speed;
+        particle.vy = Math.sin(angle) * speed;
+        
+        // 生命周期
+        particle.life = this.particleLife;
+        particle.maxLife = this.particleLife;
+        
+        // 视觉属性
+        particle.color = this.config.color || '#FFFFFF';
+        particle.size = this.config.size || 4;
+        particle.alpha = 1;
+    }
+    
+    update(deltaTime) {
+        // 更新发射计时器
+        this.emissionTimer += deltaTime;
+        const emissionInterval = 1000 / this.emissionRate;
+        
+        while (this.emissionTimer >= emissionInterval) {
+            this.emit();
+            this.emissionTimer -= emissionInterval;
+        }
+        
+        // 更新所有粒子
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const particle = this.particles[i];
+            particle.update(deltaTime);
+            
+            if (particle.life <= 0) {
+                // 回收到对象池
+                this.particles.splice(i, 1);
+                this.particlePool.push(particle);
+            }
+        }
+    }
+}
+```
+
+#### 粒子类定义
+```javascript
+class Particle {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.ax = 0;  // 加速度
+        this.ay = 0;
+        this.size = 4;
+        this.color = '#FFFFFF';
+        this.alpha = 1;
+        this.rotation = 0;
+        this.rotationSpeed = 0;
+        this.life = 1000;
+        this.maxLife = 1000;
+        this.scale = 1;
+        this.texture = null;
+    }
+    
+    update(deltaTime) {
+        const dt = deltaTime / 1000; // 转换为秒
+        
+        // 物理更新
+        this.vx += this.ax * dt;
+        this.vy += this.ay * dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.rotation += this.rotationSpeed * dt;
+        
+        // 生命周期更新
+        this.life -= deltaTime;
+        const lifeRatio = this.life / this.maxLife;
+        
+        // 淡出效果
+        if (lifeRatio < 0.3) {
+            this.alpha = lifeRatio / 0.3;
+        }
+    }
+    
+    render(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        if (this.texture) {
+            // 绘制纹理粒子
+            const size = this.size * this.scale;
+            ctx.drawImage(this.texture, -size/2, -size/2, size, size);
+        } else {
+            // 绘制几何粒子
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size * this.scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+```
+
+### 1.3.2 粒子特效预设
+
+#### 爆炸特效
+```javascript
+class ExplosionEffect {
+    static create(x, y, size = 'medium') {
+        const configs = {
+            small: {
+                emissionRate: 100,
+                maxParticles: 30,
+                particleLife: 500,
+                speed: 200,
+                speedVariance: 100,
+                spread: 10,
+                size: 3,
+                color: ['#FF6B35', '#FFA500', '#FFFF00'],
+                gravity: 0
+            },
+            medium: {
+                emissionRate: 200,
+                maxParticles: 50,
+                particleLife: 800,
+                speed: 300,
+                speedVariance: 150,
+                spread: 20,
+                size: 5,
+                color: ['#FF4500', '#FF6347', '#FFA500'],
+                gravity: 100
+            },
+            large: {
+                emissionRate: 500,
+                maxParticles: 100,
+                particleLife: 1200,
+                speed: 400,
+                speedVariance: 200,
+                spread: 40,
+                size: 8,
+                color: ['#FF0000', '#FF4500', '#FFFF00'],
+                gravity: 200
+            }
+        };
+        
+        const config = configs[size];
+        const emitter = new ParticleEmitter({
+            x: x,
+            y: y,
+            ...config,
+            emitterLife: 100  // 短暂爆发
+        });
+        
+        return emitter;
+    }
+}
+```
+
+#### 推进器尾焰
+```javascript
+class ThrusterEffect {
+    static create(parent) {
+        return new ParticleEmitter({
+            x: parent.x,
+            y: parent.y + parent.height / 2,
+            emissionRate: 30,
+            maxParticles: 100,
+            particleLife: 400,
+            angle: Math.PI / 2,  // 向下
+            angleVariance: 0.3,
+            speed: 100,
+            speedVariance: 20,
+            size: 6,
+            color: ['#4169E1', '#00BFFF', '#FFFFFF'],
+            fadeOut: true,
+            shrink: true,
+            follow: parent  // 跟随父对象
+        });
+    }
+}
+```
+
+#### 子弹拖尾效果
+```javascript
+class BulletTrail {
+    static create(bullet) {
+        return new ParticleEmitter({
+            x: bullet.x,
+            y: bullet.y,
+            emissionRate: 60,
+            maxParticles: 20,
+            particleLife: 200,
+            angle: bullet.angle + Math.PI,  // 反向
+            angleVariance: 0.1,
+            speed: 50,
+            speedVariance: 10,
+            size: 2,
+            color: bullet.trailColor || '#FFFF00',
+            alpha: 0.6,
+            fadeOut: true,
+            follow: bullet
+        });
+    }
+}
+```
+
+### 1.3.3 粒子物理模拟
+
+#### 重力与风力
+```javascript
+class ParticlePhysics {
+    static applyGravity(particle, gravity = 9.8) {
+        particle.ay += gravity;
+    }
+    
+    static applyWind(particle, windX, windY) {
+        particle.ax += windX;
+        particle.ay += windY;
+    }
+    
+    static applyDrag(particle, dragCoefficient = 0.98) {
+        particle.vx *= dragCoefficient;
+        particle.vy *= dragCoefficient;
+    }
+    
+    static applyTurbulence(particle, intensity = 10) {
+        particle.vx += (Math.random() - 0.5) * intensity;
+        particle.vy += (Math.random() - 0.5) * intensity;
+    }
+}
+```
+
+#### 磁场吸引
+```javascript
+class MagneticField {
+    constructor(x, y, strength) {
+        this.x = x;
+        this.y = y;
+        this.strength = strength;
+        this.radius = 200;
+    }
+    
+    applyTo(particle) {
+        const dx = this.x - particle.x;
+        const dy = this.y - particle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.radius && distance > 0) {
+            const force = this.strength / (distance * distance);
+            particle.ax += (dx / distance) * force;
+            particle.ay += (dy / distance) * force;
+        }
+    }
+}
+```
+
+### 1.3.4 粒子渲染优化
+
+#### 批量渲染
+```javascript
+class ParticleBatchRenderer {
+    constructor(maxParticles = 10000) {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.particleData = new Float32Array(maxParticles * 6); // x,y,size,r,g,b
+    }
+    
+    renderBatch(particles, mainCtx) {
+        // 清空粒子画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 按颜色分组渲染
+        const groups = this.groupByColor(particles);
+        
+        for (const [color, group] of groups) {
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            
+            for (const particle of group) {
+                this.ctx.moveTo(particle.x + particle.size, particle.y);
+                this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            }
+            
+            this.ctx.fill();
+        }
+        
+        // 复制到主画布
+        mainCtx.drawImage(this.canvas, 0, 0);
+    }
+}
+```
+
+#### 粒子LOD（细节层次）
+```javascript
+class ParticleLOD {
+    static getDetailLevel(distance, particleCount) {
+        if (particleCount > 1000) {
+            // 高密度场景降级
+            return 'low';
+        } else if (distance > 500) {
+            // 远距离降级
+            return 'low';
+        } else if (distance > 200) {
+            return 'medium';
+        } else {
+            return 'high';
+        }
+    }
+    
+    static applyLOD(particle, level) {
+        switch(level) {
+            case 'low':
+                particle.skipFrames = 2;  // 隔帧更新
+                particle.useSimpleRender = true;
+                break;
+            case 'medium':
+                particle.skipFrames = 1;
+                particle.useSimpleRender = false;
+                break;
+            case 'high':
+                particle.skipFrames = 0;
+                particle.useSimpleRender = false;
+                break;
+        }
+    }
+}
 ```javascript
 class ProceduralAnimator {
     // 正弦波动画（用于漂浮效果）
@@ -384,6 +7452,378 @@ class ProceduralAnimator {
         const angle = time * speed;
         sprite.x = centerX + Math.cos(angle) * radius;
         sprite.y = centerY + Math.sin(angle) * radius;
+    }
+}
+```
+
+## 1.3 粒子特效引擎
+
+### 1.3.1 粒子系统架构
+
+#### 粒子发射器
+```javascript
+class ParticleEmitter {
+    constructor(config) {
+        this.x = config.x || 0;
+        this.y = config.y || 0;
+        this.emissionRate = config.emissionRate || 10;  // 每秒发射粒子数
+        this.maxParticles = config.maxParticles || 1000;
+        this.particleLife = config.particleLife || 2000; // 毫秒
+        this.emitterLife = config.emitterLife || -1;     // -1表示永久
+        this.particles = [];
+        this.particlePool = [];  // 对象池
+        this.active = true;
+        this.emissionTimer = 0;
+        this.config = config;
+    }
+    
+    emit() {
+        if (!this.active) return;
+        
+        if (this.particles.length >= this.maxParticles) return;
+        
+        // 从对象池获取或创建新粒子
+        let particle = this.particlePool.pop();
+        if (!particle) {
+            particle = new Particle();
+        }
+        
+        // 初始化粒子属性
+        this.initParticle(particle);
+        this.particles.push(particle);
+    }
+    
+    initParticle(particle) {
+        // 位置初始化
+        particle.x = this.x + (Math.random() - 0.5) * this.config.spread;
+        particle.y = this.y;
+        
+        // 速度初始化
+        const angle = this.config.angle + (Math.random() - 0.5) * this.config.angleVariance;
+        const speed = this.config.speed + (Math.random() - 0.5) * this.config.speedVariance;
+        particle.vx = Math.cos(angle) * speed;
+        particle.vy = Math.sin(angle) * speed;
+        
+        // 生命周期
+        particle.life = this.particleLife;
+        particle.maxLife = this.particleLife;
+        
+        // 视觉属性
+        particle.color = this.config.color || '#FFFFFF';
+        particle.size = this.config.size || 4;
+        particle.alpha = 1;
+    }
+    
+    update(deltaTime) {
+        // 更新发射计时器
+        this.emissionTimer += deltaTime;
+        const emissionInterval = 1000 / this.emissionRate;
+        
+        while (this.emissionTimer >= emissionInterval) {
+            this.emit();
+            this.emissionTimer -= emissionInterval;
+        }
+        
+        // 更新所有粒子
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const particle = this.particles[i];
+            particle.update(deltaTime);
+            
+            if (particle.life <= 0) {
+                // 回收到对象池
+                this.particles.splice(i, 1);
+                this.particlePool.push(particle);
+            }
+        }
+    }
+}
+```
+
+#### 粒子类定义
+```javascript
+class Particle {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.ax = 0;  // 加速度
+        this.ay = 0;
+        this.size = 4;
+        this.color = '#FFFFFF';
+        this.alpha = 1;
+        this.rotation = 0;
+        this.rotationSpeed = 0;
+        this.life = 1000;
+        this.maxLife = 1000;
+        this.scale = 1;
+        this.texture = null;
+    }
+    
+    update(deltaTime) {
+        const dt = deltaTime / 1000; // 转换为秒
+        
+        // 物理更新
+        this.vx += this.ax * dt;
+        this.vy += this.ay * dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.rotation += this.rotationSpeed * dt;
+        
+        // 生命周期更新
+        this.life -= deltaTime;
+        const lifeRatio = this.life / this.maxLife;
+        
+        // 淡出效果
+        if (lifeRatio < 0.3) {
+            this.alpha = lifeRatio / 0.3;
+        }
+    }
+    
+    render(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        if (this.texture) {
+            // 绘制纹理粒子
+            const size = this.size * this.scale;
+            ctx.drawImage(this.texture, -size/2, -size/2, size, size);
+        } else {
+            // 绘制几何粒子
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size * this.scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+```
+
+### 1.3.2 粒子特效预设
+
+#### 爆炸特效
+```javascript
+class ExplosionEffect {
+    static create(x, y, size = 'medium') {
+        const configs = {
+            small: {
+                emissionRate: 100,
+                maxParticles: 30,
+                particleLife: 500,
+                speed: 200,
+                speedVariance: 100,
+                spread: 10,
+                size: 3,
+                color: ['#FF6B35', '#FFA500', '#FFFF00'],
+                gravity: 0
+            },
+            medium: {
+                emissionRate: 200,
+                maxParticles: 50,
+                particleLife: 800,
+                speed: 300,
+                speedVariance: 150,
+                spread: 20,
+                size: 5,
+                color: ['#FF4500', '#FF6347', '#FFA500'],
+                gravity: 100
+            },
+            large: {
+                emissionRate: 500,
+                maxParticles: 100,
+                particleLife: 1200,
+                speed: 400,
+                speedVariance: 200,
+                spread: 40,
+                size: 8,
+                color: ['#FF0000', '#FF4500', '#FFFF00'],
+                gravity: 200
+            }
+        };
+        
+        const config = configs[size];
+        const emitter = new ParticleEmitter({
+            x: x,
+            y: y,
+            ...config,
+            emitterLife: 100  // 短暂爆发
+        });
+        
+        return emitter;
+    }
+}
+```
+
+#### 推进器尾焰
+```javascript
+class ThrusterEffect {
+    static create(parent) {
+        return new ParticleEmitter({
+            x: parent.x,
+            y: parent.y + parent.height / 2,
+            emissionRate: 30,
+            maxParticles: 100,
+            particleLife: 400,
+            angle: Math.PI / 2,  // 向下
+            angleVariance: 0.3,
+            speed: 100,
+            speedVariance: 20,
+            size: 6,
+            color: ['#4169E1', '#00BFFF', '#FFFFFF'],
+            fadeOut: true,
+            shrink: true,
+            follow: parent  // 跟随父对象
+        });
+    }
+}
+```
+
+#### 子弹拖尾效果
+```javascript
+class BulletTrail {
+    static create(bullet) {
+        return new ParticleEmitter({
+            x: bullet.x,
+            y: bullet.y,
+            emissionRate: 60,
+            maxParticles: 20,
+            particleLife: 200,
+            angle: bullet.angle + Math.PI,  // 反向
+            angleVariance: 0.1,
+            speed: 50,
+            speedVariance: 10,
+            size: 2,
+            color: bullet.trailColor || '#FFFF00',
+            alpha: 0.6,
+            fadeOut: true,
+            follow: bullet
+        });
+    }
+}
+```
+
+### 1.3.3 粒子物理模拟
+
+#### 重力与风力
+```javascript
+class ParticlePhysics {
+    static applyGravity(particle, gravity = 9.8) {
+        particle.ay += gravity;
+    }
+    
+    static applyWind(particle, windX, windY) {
+        particle.ax += windX;
+        particle.ay += windY;
+    }
+    
+    static applyDrag(particle, dragCoefficient = 0.98) {
+        particle.vx *= dragCoefficient;
+        particle.vy *= dragCoefficient;
+    }
+    
+    static applyTurbulence(particle, intensity = 10) {
+        particle.vx += (Math.random() - 0.5) * intensity;
+        particle.vy += (Math.random() - 0.5) * intensity;
+    }
+}
+```
+
+#### 磁场吸引
+```javascript
+class MagneticField {
+    constructor(x, y, strength) {
+        this.x = x;
+        this.y = y;
+        this.strength = strength;
+        this.radius = 200;
+    }
+    
+    applyTo(particle) {
+        const dx = this.x - particle.x;
+        const dy = this.y - particle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.radius && distance > 0) {
+            const force = this.strength / (distance * distance);
+            particle.ax += (dx / distance) * force;
+            particle.ay += (dy / distance) * force;
+        }
+    }
+}
+```
+
+### 1.3.4 粒子渲染优化
+
+#### 批量渲染
+```javascript
+class ParticleBatchRenderer {
+    constructor(maxParticles = 10000) {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.particleData = new Float32Array(maxParticles * 6); // x,y,size,r,g,b
+    }
+    
+    renderBatch(particles, mainCtx) {
+        // 清空粒子画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 按颜色分组渲染
+        const groups = this.groupByColor(particles);
+        
+        for (const [color, group] of groups) {
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            
+            for (const particle of group) {
+                this.ctx.moveTo(particle.x + particle.size, particle.y);
+                this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            }
+            
+            this.ctx.fill();
+        }
+        
+        // 复制到主画布
+        mainCtx.drawImage(this.canvas, 0, 0);
+    }
+}
+```
+
+#### 粒子LOD（细节层次）
+```javascript
+class ParticleLOD {
+    static getDetailLevel(distance, particleCount) {
+        if (particleCount > 1000) {
+            // 高密度场景降级
+            return 'low';
+        } else if (distance > 500) {
+            // 远距离降级
+            return 'low';
+        } else if (distance > 200) {
+            return 'medium';
+        } else {
+            return 'high';
+        }
+    }
+    
+    static applyLOD(particle, level) {
+        switch(level) {
+            case 'low':
+                particle.skipFrames = 2;  // 隔帧更新
+                particle.useSimpleRender = true;
+                break;
+            case 'medium':
+                particle.skipFrames = 1;
+                particle.useSimpleRender = false;
+                break;
+            case 'high':
+                particle.skipFrames = 0;
+                particle.useSimpleRender = false;
+                break;
+        }
     }
 }
 ```

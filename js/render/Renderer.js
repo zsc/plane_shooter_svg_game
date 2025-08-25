@@ -1,0 +1,328 @@
+/**
+ * 渲染器
+ * 负责所有的绘制操作
+ */
+class Renderer {
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        
+        // 设置画布尺寸
+        this.canvas.width = GameConfig.CANVAS.WIDTH;
+        this.canvas.height = GameConfig.CANVAS.HEIGHT;
+        
+        // 背景滚动偏移
+        this.backgroundOffset = 0;
+        
+        // 图层管理
+        this.layers = {
+            background: 0,
+            entities: 1,
+            player: 2,
+            effects: 3,
+            ui: 4
+        };
+        
+        // 性能统计
+        this.drawCalls = 0;
+        
+        // 初始化
+        this.init();
+    }
+
+    /**
+     * 初始化渲染器
+     */
+    init() {
+        // 设置默认样式
+        this.ctx.imageSmoothingEnabled = true;
+        this.ctx.imageSmoothingQuality = 'high';
+        
+        // 文字样式
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.font = '16px Microsoft YaHei';
+        
+        console.log('渲染器初始化完成');
+    }
+
+    /**
+     * 清空画布
+     */
+    clear() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.drawCalls = 0;
+    }
+
+    /**
+     * 绘制背景
+     * @param {number} deltaTime - 时间增量
+     */
+    drawBackground(deltaTime) {
+        // 更新背景滚动
+        this.backgroundOffset += GameConfig.RENDER.BACKGROUND_SCROLL_SPEED * deltaTime;
+        if (this.backgroundOffset > this.canvas.height) {
+            this.backgroundOffset -= this.canvas.height;
+        }
+        
+        // 绘制渐变背景
+        const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+        gradient.addColorStop(0, '#001a33');
+        gradient.addColorStop(1, '#003366');
+        
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 绘制星空效果
+        this.drawStars();
+        
+        this.drawCalls++;
+    }
+
+    /**
+     * 绘制星空
+     */
+    drawStars() {
+        this.ctx.save();
+        
+        // 简单的星星效果
+        const stars = [
+            {x: 100, y: 100}, {x: 200, y: 150}, {x: 300, y: 80},
+            {x: 400, y: 200}, {x: 500, y: 120}, {x: 150, y: 250},
+            {x: 350, y: 300}, {x: 450, y: 350}, {x: 250, y: 400}
+        ];
+        
+        this.ctx.fillStyle = 'white';
+        stars.forEach(star => {
+            const y = (star.y + this.backgroundOffset * 0.3) % this.canvas.height;
+            this.ctx.beginPath();
+            this.ctx.arc(star.x, y, 1.5, 0, Math.PI * 2);
+            this.ctx.fill();
+        });
+        
+        this.ctx.restore();
+    }
+
+    /**
+     * 绘制矩形
+     * @param {number} x - X坐标
+     * @param {number} y - Y坐标
+     * @param {number} width - 宽度
+     * @param {number} height - 高度
+     * @param {string} color - 颜色
+     */
+    drawRect(x, y, width, height, color) {
+        this.ctx.fillStyle = color;
+        this.ctx.fillRect(x, y, width, height);
+        this.drawCalls++;
+    }
+
+    /**
+     * 绘制带边框的矩形
+     * @param {number} x - X坐标
+     * @param {number} y - Y坐标
+     * @param {number} width - 宽度
+     * @param {number} height - 高度
+     * @param {string} fillColor - 填充颜色
+     * @param {string} strokeColor - 边框颜色
+     * @param {number} lineWidth - 边框宽度
+     */
+    drawRectWithBorder(x, y, width, height, fillColor, strokeColor, lineWidth = 1) {
+        this.ctx.fillStyle = fillColor;
+        this.ctx.fillRect(x, y, width, height);
+        
+        this.ctx.strokeStyle = strokeColor;
+        this.ctx.lineWidth = lineWidth;
+        this.ctx.strokeRect(x, y, width, height);
+        
+        this.drawCalls += 2;
+    }
+
+    /**
+     * 绘制圆形
+     * @param {number} x - 圆心X坐标
+     * @param {number} y - 圆心Y坐标
+     * @param {number} radius - 半径
+     * @param {string} color - 颜色
+     */
+    drawCircle(x, y, radius, color) {
+        this.ctx.fillStyle = color;
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.drawCalls++;
+    }
+
+    /**
+     * 绘制文字
+     * @param {string} text - 文字内容
+     * @param {number} x - X坐标
+     * @param {number} y - Y坐标
+     * @param {number} size - 字体大小
+     * @param {string} color - 颜色
+     */
+    drawText(text, x, y, size = 16, color = '#FFFFFF') {
+        this.ctx.save();
+        this.ctx.font = `${size}px Microsoft YaHei`;
+        this.ctx.fillStyle = color;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText(text, x, y);
+        this.ctx.restore();
+        this.drawCalls++;
+    }
+
+    /**
+     * 绘制玩家飞机（简单三角形）
+     * @param {Object} player - 玩家对象
+     */
+    drawPlayer(player) {
+        this.ctx.save();
+        this.ctx.translate(player.x, player.y);
+        
+        // 绘制机身（三角形）
+        this.ctx.fillStyle = '#4A90E2';
+        this.ctx.strokeStyle = '#2E5C8A';
+        this.ctx.lineWidth = 2;
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, -30);
+        this.ctx.lineTo(-20, 20);
+        this.ctx.lineTo(0, 10);
+        this.ctx.lineTo(20, 20);
+        this.ctx.closePath();
+        this.ctx.fill();
+        this.ctx.stroke();
+        
+        // 绘制引擎火焰
+        if (player.isMoving) {
+            this.ctx.fillStyle = '#FFA500';
+            this.ctx.globalAlpha = 0.8;
+            this.ctx.beginPath();
+            this.ctx.moveTo(-8, 20);
+            this.ctx.lineTo(-4, 35);
+            this.ctx.lineTo(0, 30);
+            this.ctx.lineTo(4, 35);
+            this.ctx.lineTo(8, 20);
+            this.ctx.closePath();
+            this.ctx.fill();
+        }
+        
+        // 绘制碰撞箱（调试模式）
+        if (GameConfig.RENDER.SHOW_HITBOX) {
+            this.ctx.globalAlpha = 0.3;
+            this.ctx.strokeStyle = '#00FF00';
+            this.ctx.lineWidth = 1;
+            this.ctx.strokeRect(
+                -player.hitBox.width / 2, 
+                -player.hitBox.height / 2,
+                player.hitBox.width, 
+                player.hitBox.height
+            );
+        }
+        
+        this.ctx.restore();
+        this.drawCalls++;
+    }
+
+    /**
+     * 绘制HUD
+     * @param {Object} gameData - 游戏数据
+     */
+    drawHUD(gameData) {
+        // 生命值条
+        const healthBarWidth = 200;
+        const healthBarHeight = 20;
+        const healthBarX = 20;
+        const healthBarY = 20;
+        
+        // 背景
+        this.drawRectWithBorder(
+            healthBarX, healthBarY, 
+            healthBarWidth, healthBarHeight,
+            'rgba(0,0,0,0.5)', '#333', 2
+        );
+        
+        // 生命值
+        if (gameData.health > 0) {
+            const healthWidth = (gameData.health / gameData.maxHealth) * (healthBarWidth - 4);
+            this.ctx.fillStyle = gameData.health > 30 ? '#4CAF50' : '#F44336';
+            this.ctx.fillRect(healthBarX + 2, healthBarY + 2, healthWidth, healthBarHeight - 4);
+        }
+        
+        // 生命值文字
+        this.drawText(
+            `HP: ${gameData.health}/${gameData.maxHealth}`,
+            healthBarX + healthBarWidth / 2, 
+            healthBarY + healthBarHeight / 2,
+            12, '#FFFFFF'
+        );
+        
+        // 分数
+        this.drawText(
+            `分数: ${gameData.score}`,
+            this.canvas.width - 100, 30,
+            18, '#FFD700'
+        );
+        
+        // FPS显示
+        if (GameConfig.RENDER.SHOW_FPS && gameData.fps !== undefined) {
+            this.drawText(
+                `FPS: ${gameData.fps}`,
+                this.canvas.width - 50, 60,
+                12, '#00FF00'
+            );
+        }
+    }
+
+    /**
+     * 绘制调试信息
+     * @param {Object} debugData - 调试数据
+     */
+    drawDebugInfo(debugData) {
+        const debugDiv = document.getElementById('debugInfo');
+        if (!debugDiv) return;
+        
+        let html = '<strong>调试信息</strong><br>';
+        html += `FPS: ${debugData.fps}<br>`;
+        html += `更新时间: ${debugData.updateTime}ms<br>`;
+        html += `渲染时间: ${debugData.renderTime}ms<br>`;
+        html += `帧时间: ${debugData.frameTime}ms<br>`;
+        html += `绘制调用: ${this.drawCalls}<br>`;
+        html += `玩家位置: (${debugData.playerX?.toFixed(0)}, ${debugData.playerY?.toFixed(0)})<br>`;
+        html += `状态: ${debugData.gameState}<br>`;
+        
+        debugDiv.innerHTML = html;
+    }
+
+    /**
+     * 获取画布尺寸
+     * @returns {Object} 画布尺寸
+     */
+    getCanvasSize() {
+        return {
+            width: this.canvas.width,
+            height: this.canvas.height
+        };
+    }
+
+    /**
+     * 屏幕震动效果
+     * @param {number} intensity - 震动强度
+     * @param {number} duration - 持续时间
+     */
+    screenShake(intensity, duration) {
+        // 保存当前变换
+        this.ctx.save();
+        
+        // 应用随机偏移
+        const offsetX = (Math.random() - 0.5) * intensity;
+        const offsetY = (Math.random() - 0.5) * intensity;
+        this.ctx.translate(offsetX, offsetY);
+        
+        // 在duration后恢复
+        setTimeout(() => {
+            this.ctx.restore();
+        }, duration);
+    }
+}

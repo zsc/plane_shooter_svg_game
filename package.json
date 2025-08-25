@@ -1,0 +1,27 @@
+{
+  "name": "plane-shooter-game",
+  "version": "1.0.0",
+  "description": "全民飞机大战 - 街机风格垂直卷轴射击游戏",
+  "main": "index.html",
+  "scripts": {
+    "test": "node test_headless.js",
+    "test:watch": "nodemon test_headless.js",
+    "serve": "python3 -m http.server 8080",
+    "install-test": "npm install --save-dev jsdom"
+  },
+  "keywords": [
+    "game",
+    "arcade",
+    "shooter",
+    "canvas",
+    "javascript"
+  ],
+  "author": "Game Development Team",
+  "license": "MIT",
+  "devDependencies": {
+    "jsdom": "^22.1.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

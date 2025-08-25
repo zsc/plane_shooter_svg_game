@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全民飞机大战</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+        #gameCanvas {
+            display: block;
+            margin: 0 auto;
+            background: linear-gradient(to bottom, #001a33, #003366);
+        }
+        #debugInfo {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #0f0;
+            font-size: 12px;
+            font-family: monospace;
+            background: rgba(0,0,0,0.7);
+            padding: 5px;
+            display: none;
+        }
+        #debugInfo.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="debugInfo"></div>
+    
+    <script src="js/core/GameConfig.js"></script>
+    <script src="js/core/GameLoop.js"></script>
+    <script src="js/core/StateMachine.js"></script>
+    <script src="js/render/Renderer.js"></script>
+    <script src="js/input/InputManager.js"></script>
+    <script src="js/entities/Player.js"></script>
+    <script src="js/Game.js"></script>
+    <script>
+        // 游戏初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            const game = new Game();
+            game.init();
+            game.start();
+            
+            // 调试模式切换
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'F3') {
+                    document.getElementById('debugInfo').classList.toggle('show');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

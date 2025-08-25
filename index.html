@@ -143,6 +143,7 @@
             
             // 获取元素
             const startButton = document.getElementById('startButton');
+            const pauseButton = document.getElementById('pauseButton');
             const controls = document.getElementById('controls');
             
             // 开始按钮点击事件
@@ -151,25 +152,52 @@
                 startButton.classList.add('hidden');
                 controls.classList.add('hidden');
                 
-                // 切换到游戏状态
-                game.stateMachine.changeState(GameConfig.STATES.PLAYING);
+                // 根据当前文字决定行为
+                if (startButton.textContent === '重新开始') {
+                    game.player.reset();
+                    game.stateMachine.changeState(GameConfig.STATES.MENU);
+                    startButton.textContent = '开始游戏';
+                } else {
+                    // 切换到游戏状态
+                    game.stateMachine.changeState(GameConfig.STATES.PLAYING);
+                }
                 
                 // 聚焦画布以接收键盘输入
+                document.getElementById('gameCanvas').focus();
+            });
+            
+            // 暂停按钮点击事件
+            pauseButton.addEventListener('click', () => {
+                const currentState = game.stateMachine.getCurrentStateName();
+                if (currentState === GameConfig.STATES.PLAYING) {
+                    game.stateMachine.changeState(GameConfig.STATES.PAUSED);
+                    pauseButton.textContent = '继续';
+                } else if (currentState === GameConfig.STATES.PAUSED) {
+                    game.stateMachine.changeState(GameConfig.STATES.PLAYING);
+                    pauseButton.textContent = '暂停';
+                }
                 document.getElementById('gameCanvas').focus();
             });
             
             // 监听状态变化，显示/隐藏按钮
             game.stateMachine.onStateChange((newState) => {
                 if (newState === GameConfig.STATES.MENU) {
+                    startButton.textContent = '开始游戏';
                     startButton.classList.remove('hidden');
                     controls.classList.remove('hidden');
+                    pauseButton.classList.add('hidden');
                 } else if (newState === GameConfig.STATES.PLAYING) {
                     startButton.classList.add('hidden');
                     controls.classList.add('hidden');
+                    pauseButton.classList.remove('hidden');
+                    pauseButton.textContent = '暂停';
+                } else if (newState === GameConfig.STATES.PAUSED) {
+                    pauseButton.textContent = '继续';
                 } else if (newState === GameConfig.STATES.GAME_OVER) {
                     // 游戏结束时显示重新开始按钮
                     startButton.textContent = '重新开始';
                     startButton.classList.remove('hidden');
+                    pauseButton.classList.add('hidden');
                 }
             });
             

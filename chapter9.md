@@ -670,3 +670,393 @@ WaveGenerator = {
     }
 }
 ```
+
+### 9.4.2 动态难度调整
+
+```javascript
+DynamicDifficulty = {
+    // 难度参数
+    parameters: {
+        baseEnemyHealth: 100,
+        baseEnemyDamage: 10,
+        baseEnemySpeed: 100,
+        baseSpawnRate: 1.0,
+        baseBulletSpeed: 200
+    },
+    
+    // 难度计算
+    calculateDifficulty: function(gameState) {
+        // 基础难度
+        baseDifficulty = gameState.currentLevel * 0.2;
+        
+        // 玩家表现调整
+        performanceModifier = this.evaluatePlayerPerformance(gameState);
+        
+        // 时间因素
+        timeModifier = Math.min(gameState.elapsedTime / 600, 1.0); // 10分钟达到峰值
+        
+        return baseDifficulty * (1 + performanceModifier) * (1 + timeModifier);
+    },
+    
+    // 玩家表现评估
+    evaluatePlayerPerformance: function(gameState) {
+        score = 0;
+        
+        // 命中率评估
+        if (gameState.player.accuracy > 0.8) score += 0.2;
+        if (gameState.player.accuracy < 0.3) score -= 0.2;
+        
+        // 生命值评估
+        healthRatio = gameState.player.health / gameState.player.maxHealth;
+        if (healthRatio > 0.8) score += 0.15;
+        if (healthRatio < 0.3) score -= 0.15;
+        
+        // 连续击杀评估
+        if (gameState.player.killStreak > 10) score += 0.1;
+        
+        return Math.max(-0.3, Math.min(0.5, score));
+    },
+    
+    // 应用难度调整
+    applyDifficulty: function(enemy, difficulty) {
+        enemy.health *= (1 + difficulty * 0.5);
+        enemy.damage *= (1 + difficulty * 0.3);
+        enemy.speed *= (1 + difficulty * 0.2);
+        enemy.fireRate *= (1 + difficulty * 0.4);
+        enemy.accuracy = Math.min(0.9, enemy.accuracy * (1 + difficulty * 0.3));
+    }
+}
+```
+
+### 9.4.3 特殊生成事件
+
+```javascript
+SpecialSpawnEvents = {
+    // 事件类型
+    events: {
+        // 精英小队
+        eliteSquad: {
+            probability: 0.05,
+            condition: "score > 10000",
+            spawn: function() {
+                return createEliteFormation(5, "interceptor");
+            }
+        },
+        
+        // 轰炸机编队
+        bomberWing: {
+            probability: 0.08,
+            condition: "level % 3 === 0",
+            spawn: function() {
+                return createBomberFormation(3, "bomber", 2, "fighter");
+            }
+        },
+        
+        // 隐形突袭
+        stealthAmbush: {
+            probability: 0.03,
+            condition: "playerKillStreak > 20",
+            spawn: function() {
+                positions = getSurroundPositions(player);
+                return createStealthUnits(positions);
+            }
+        },
+        
+        // 指挥官出现
+        commanderAppearance: {
+            probability: 0.02,
+            condition: "waveNumber > 10",
+            spawn: function() {
+                commander = createCommander();
+                escorts = createEscortFormation(commander, 4);
+                return [commander, ...escorts];
+            }
+        }
+    },
+    
+    // 事件触发检查
+    checkEvents: function(gameState) {
+        triggeredEvents = [];
+        
+        this.events.forEach(event => {
+            if (Math.random() < event.probability) {
+                if (evaluateCondition(event.condition, gameState)) {
+                    triggeredEvents.push(event);
+                }
+            }
+        });
+        
+        return triggeredEvents;
+    }
+}
+```
+
+### 9.4.4 生成器优化策略
+
+```javascript
+SpawnOptimization = {
+    // 对象池管理
+    objectPool: {
+        pools: new Map(),
+        
+        getEnemy: function(type) {
+            if (!this.pools.has(type)) {
+                this.pools.set(type, []);
+            }
+            
+            pool = this.pools.get(type);
+            if (pool.length > 0) {
+                return pool.pop().reset();
+            }
+            
+            return createNewEnemy(type);
+        },
+        
+        returnEnemy: function(enemy) {
+            enemy.cleanup();
+            this.pools.get(enemy.type).push(enemy);
+        }
+    },
+    
+    // 生成限制
+    spawnLimits: {
+        maxActiveEnemies: 50,
+        maxBulletsPerEnemy: 10,
+        maxFormations: 5,
+        
+        canSpawn: function() {
+            return activeEnemies.length < this.maxActiveEnemies;
+        }
+    },
+    
+    // 性能自适应
+    performanceAdaptation: {
+        targetFPS: 60,
+        currentFPS: 60,
+        
+        adjustSpawnRate: function() {
+            if (this.currentFPS < this.targetFPS * 0.8) {
+                // 降低生成率
+                spawnRate *= 0.9;
+                maxEnemies = Math.max(20, maxEnemies - 5);
+            } else if (this.currentFPS > this.targetFPS * 0.95) {
+                // 恢复生成率
+                spawnRate = Math.min(baseSpawnRate, spawnRate * 1.05);
+                maxEnemies = Math.min(50, maxEnemies + 2);
+            }
+        }
+    }
+}
+```
+
+## 9.5 敌机状态管理
+
+### 9.5.1 状态机实现
+
+```javascript
+EnemyStateMachine = {
+    states: {
+        SPAWNING: "spawning",       // 生成中
+        ENTERING: "entering",       // 进场
+        ACTIVE: "active",          // 活跃战斗
+        FLEEING: "fleeing",        // 撤退
+        DYING: "dying",            // 死亡动画
+        DESTROYED: "destroyed"      // 已销毁
+    },
+    
+    transitions: {
+        spawning: ["entering"],
+        entering: ["active", "dying"],
+        active: ["fleeing", "dying"],
+        fleeing: ["destroyed"],
+        dying: ["destroyed"],
+        destroyed: []
+    },
+    
+    // 状态转换
+    changeState: function(enemy, newState) {
+        if (this.canTransition(enemy.state, newState)) {
+            this.exitState(enemy, enemy.state);
+            enemy.state = newState;
+            this.enterState(enemy, newState);
+        }
+    },
+    
+    // 状态进入处理
+    enterState: function(enemy, state) {
+        switch(state) {
+            case "spawning":
+                enemy.visible = false;
+                enemy.invulnerable = true;
+                break;
+            case "entering":
+                enemy.visible = true;
+                enemy.playAnimation("enter");
+                break;
+            case "active":
+                enemy.invulnerable = false;
+                enemy.enableAI();
+                break;
+            case "fleeing":
+                enemy.disableWeapons();
+                enemy.setFleeTarget();
+                break;
+            case "dying":
+                enemy.invulnerable = true;
+                enemy.playAnimation("explode");
+                enemy.dropLoot();
+                break;
+        }
+    }
+}
+```
+
+### 9.5.2 伤害处理系统
+
+```javascript
+DamageSystem = {
+    // 伤害计算
+    calculateDamage: function(source, target) {
+        baseDamage = source.damage;
+        
+        // 护甲减伤
+        armorReduction = target.armor * 0.01;
+        damage = baseDamage * (1 - armorReduction);
+        
+        // 护盾吸收
+        if (target.shield > 0) {
+            shieldAbsorb = Math.min(damage, target.shield);
+            target.shield -= shieldAbsorb;
+            damage -= shieldAbsorb;
+        }
+        
+        // 暴击判定
+        if (Math.random() < source.critChance) {
+            damage *= source.critMultiplier;
+            this.showCriticalHit(target);
+        }
+        
+        return Math.floor(damage);
+    },
+    
+    // 应用伤害
+    applyDamage: function(target, damage, source) {
+        target.health -= damage;
+        
+        // 显示伤害数字
+        this.showDamageNumber(target, damage);
+        
+        // 触发受击效果
+        target.onHit(source);
+        
+        // 检查死亡
+        if (target.health <= 0) {
+            this.handleDeath(target, source);
+        }
+    },
+    
+    // 死亡处理
+    handleDeath: function(target, killer) {
+        // 更新击杀者统计
+        killer.kills++;
+        killer.score += target.scoreValue;
+        
+        // 经验值奖励
+        killer.gainExperience(target.experienceValue);
+        
+        // 触发死亡事件
+        EventSystem.trigger("enemyDestroyed", {
+            enemy: target,
+            killer: killer
+        });
+        
+        // 状态转换
+        target.stateMachine.changeState(target, "dying");
+    }
+}
+```
+
+## 9.6 性能优化策略
+
+### 9.6.1 空间分区优化
+
+```javascript
+SpatialPartitioning = {
+    // 网格配置
+    gridSize: 100,
+    grid: {},
+    
+    // 添加到网格
+    addToGrid: function(enemy) {
+        cellX = Math.floor(enemy.x / this.gridSize);
+        cellY = Math.floor(enemy.y / this.gridSize);
+        key = cellX + "," + cellY;
+        
+        if (!this.grid[key]) {
+            this.grid[key] = [];
+        }
+        
+        this.grid[key].push(enemy);
+        enemy.gridCell = key;
+    },
+    
+    // 获取邻近敌机
+    getNearbyEnemies: function(position, radius) {
+        nearby = [];
+        cellRadius = Math.ceil(radius / this.gridSize);
+        centerX = Math.floor(position.x / this.gridSize);
+        centerY = Math.floor(position.y / this.gridSize);
+        
+        for (dx = -cellRadius; dx <= cellRadius; dx++) {
+            for (dy = -cellRadius; dy <= cellRadius; dy++) {
+                key = (centerX + dx) + "," + (centerY + dy);
+                if (this.grid[key]) {
+                    nearby = nearby.concat(this.grid[key]);
+                }
+            }
+        }
+        
+        return nearby;
+    }
+}
+```
+
+### 9.6.2 LOD系统
+
+```javascript
+LevelOfDetail = {
+    // LOD级别定义
+    levels: {
+        HIGH: {distance: 200, updateRate: 1, renderDetail: "full"},
+        MEDIUM: {distance: 400, updateRate: 2, renderDetail: "reduced"},
+        LOW: {distance: 600, updateRate: 4, renderDetail: "minimal"},
+        CULLED: {distance: Infinity, updateRate: 0, renderDetail: "none"}
+    },
+    
+    // 更新LOD
+    updateLOD: function(enemy, camera) {
+        distance = calculateDistance(enemy, camera);
+        
+        for (level in this.levels) {
+            if (distance < this.levels[level].distance) {
+                enemy.lodLevel = level;
+                enemy.updateRate = this.levels[level].updateRate;
+                enemy.renderDetail = this.levels[level].renderDetail;
+                break;
+            }
+        }
+    }
+}
+```
+
+## 章节总结
+
+本章详细定义了敌机系统的完整架构，包括：
+
+1. **敌机类型体系**：从轻型到精英的5个等级层次，每个等级都有独特的属性和行为特征
+2. **AI行为系统**：基于行为树的智能决策，包含多种移动模式和攻击策略
+3. **编队飞行逻辑**：支持多种编队类型，具备动态调整和协同作战能力
+4. **生成器系统**：灵活的波次生成机制，支持动态难度调整和特殊事件
+5. **优化策略**：对象池、空间分区、LOD等技术确保大量敌机时的性能
+
+这套系统为游戏提供了丰富多样的战斗体验，通过合理的难度曲线和智能的敌机行为，确保玩家始终面临适度的挑战。

@@ -103,6 +103,11 @@ try {
     loadGameFile('js/render/Renderer.js');
     loadGameFile('js/input/InputManager.js');
     loadGameFile('js/entities/Player.js');
+    loadGameFile('js/entities/Enemy.js');
+    loadGameFile('js/combat/Weapon.js');
+    loadGameFile('js/combat/BulletSystem.js');
+    loadGameFile('js/combat/CollisionSystem.js');
+    loadGameFile('js/effects/ParticleSystem.js');
     loadGameFile('js/Game.js');
     console.log('游戏文件加载成功');
 } catch (error) {

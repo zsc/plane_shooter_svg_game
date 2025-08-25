@@ -11,6 +11,15 @@ class Game {
         this.inputManager = null;
         this.player = null;
         
+        // 战斗系统
+        this.bulletSystem = null;
+        this.collisionSystem = null;
+        this.particleSystem = null;
+        this.enemies = [];
+        this.enemySpawnTimer = 0;
+        this.enemySpawnInterval = 2; // 秒
+        this.waveNumber = 0;
+        
         // 游戏状态
         this.isInitialized = false;
         this.isRunning = false;
@@ -38,6 +47,16 @@ class Game {
         this.stateMachine = new StateMachine();
         this.inputManager = new InputManager();
         this.player = new Player();
+        
+        // 初始化战斗系统
+        this.bulletSystem = new BulletSystem();
+        this.collisionSystem = new CollisionSystem();
+        this.particleSystem = new ParticleSystem();
+        
+        // 初始化玩家武器
+        this.player.weaponManager = new WeaponManager(this.player);
+        this.player.weaponManager.addWeapon('laser', new LaserCannon(1));
+        this.player.weaponManager.addWeapon('missile', new MissileLauncher(1));
         
         // 设置游戏循环回调
         this.gameLoop.init(
@@ -67,12 +86,52 @@ class Game {
             playingState.update = (dt) => {
                 // 更新玩家
                 this.player.update(dt, this.inputManager);
+                
+                // 获取玩家发射的子弹
+                const newBullets = this.player.updateWeapon(dt, this.inputManager);
+                if (newBullets && newBullets.length > 0) {
+                    this.bulletSystem.addBullets(newBullets, false);
+                }
+                
+                // 更新敌人
+                this.updateEnemies(dt);
+                
+                // 生成敌人
+                this.spawnEnemies(dt);
+                
+                // 更新子弹系统
+                this.bulletSystem.update(dt, this.enemies);
+                
+                // 碰撞检测
+                this.collisionSystem.processCollisions({
+                    player: this.player,
+                    enemies: this.enemies,
+                    bulletSystem: this.bulletSystem,
+                    powerups: []
+                });
+                
+                // 更新粒子系统
+                this.particleSystem.update(dt);
+                
+                // 添加推进器火焰效果
+                if (this.player.isMoving && !this.player.isDead) {
+                    this.particleSystem.createThrusterFlame(
+                        this.player.x,
+                        this.player.y + this.player.height / 2
+                    );
+                }
             };
             
             playingState.enter = () => {
                 console.log('进入游戏状态');
                 // 重置玩家位置和状态
                 this.player.reset();
+                // 清空战斗系统
+                this.enemies = [];
+                this.bulletSystem.clear();
+                this.particleSystem.clear();
+                this.waveNumber = 0;
+                this.enemySpawnTimer = 0;
             };
             
             playingState.render = (renderer) => {
@@ -86,9 +145,20 @@ class Game {
                     renderer.drawText('使用方向键或WASD移动', 320, 240, 20, '#FFFFFF');
                 }
                 
+                // 绘制粒子效果（底层）
+                this.particleSystem.render(renderer);
+                
+                // 绘制敌人
+                this.enemies.forEach(enemy => {
+                    enemy.render(renderer);
+                });
+                
                 // 绘制子弹
+                this.bulletSystem.render(renderer);
+                
+                // 兼容旧的子弹系统
                 this.player.bullets.forEach(bullet => {
-                    renderer.drawCircle(bullet.x, bullet.y, 3, '#FFD700');
+                    renderer.drawCircle(bullet.x, bullet.y, bullet.size || 3, bullet.color || '#FFD700');
                 });
                 
                 // 绘制玩家
@@ -246,8 +316,31 @@ class Game {
         perfData.playerX = this.player.x;
         perfData.playerY = this.player.y;
         perfData.playerSpeed = this.player.getSpeed();
-        perfData.bullets = this.player.bullets.length;
+        perfData.bullets = this.player.bullets.length + this.bulletSystem.bullets.length;
+        perfData.enemyBullets = this.bulletSystem.enemyBullets.length;
+        perfData.enemies = this.enemies.length;
+        perfData.particles = this.particleSystem.particles.length;
         perfData.gameState = this.stateMachine.getCurrentStateName();
+        perfData.wave = this.waveNumber;
+        perfData.score = this.player.score;
+        
+        // 更新HTML调试信息
+        const debugDiv = document.getElementById('debugInfo');
+        if (debugDiv && this.debugMode) {
+            debugDiv.innerHTML = `
+                FPS: ${perfData.fps}<br>
+                State: ${perfData.gameState}<br>
+                Wave: ${perfData.wave}<br>
+                Score: ${perfData.score}<br>
+                Enemies: ${perfData.enemies}<br>
+                Player Bullets: ${perfData.bullets}<br>
+                Enemy Bullets: ${perfData.enemyBullets}<br>
+                Particles: ${perfData.particles}<br>
+                Player: (${Math.round(perfData.playerX)}, ${Math.round(perfData.playerY)})<br>
+                Update: ${perfData.updateTime}ms<br>
+                Render: ${perfData.renderTime}ms
+            `;
+        }
     }
 
     /**
@@ -265,6 +358,118 @@ class Game {
         };
     }
 
+    /**
+     * 生成敌人
+     */
+    spawnEnemies(dt) {
+        this.enemySpawnTimer += dt;
+        
+        if (this.enemySpawnTimer >= this.enemySpawnInterval) {
+            this.enemySpawnTimer = 0;
+            this.waveNumber++;
+            
+            // 根据波数调整难度
+            const difficulty = Math.min(this.waveNumber / 10, 1);
+            
+            // 随机选择生成模式
+            const formations = ['line', 'v', 'wave', 'circle'];
+            const formation = formations[Math.floor(Math.random() * formations.length)];
+            
+            // 生成敌人编队
+            const startX = GameConfig.CANVAS.WIDTH / 2;
+            const startY = -50;
+            const newEnemies = EnemyFactory.createFormation(formation, startX, startY);
+            
+            // 根据难度调整敌人属性
+            newEnemies.forEach(enemy => {
+                enemy.maxHealth *= (1 + difficulty * 0.5);
+                enemy.health = enemy.maxHealth;
+                enemy.damage *= (1 + difficulty * 0.3);
+                enemy.scoreValue *= (1 + difficulty);
+                
+                // 随机设置行为
+                const behaviors = ['linear', 'sine', 'zigzag', 'strafe'];
+                enemy.behavior = behaviors[Math.floor(Math.random() * behaviors.length)];
+            });
+            
+            this.enemies.push(...newEnemies);
+            
+            // 调整生成间隔
+            this.enemySpawnInterval = Math.max(1, 3 - difficulty * 1.5);
+        }
+    }
+    
+    /**
+     * 更新敌人
+     */
+    updateEnemies(dt) {
+        for (let i = this.enemies.length - 1; i >= 0; i--) {
+            const enemy = this.enemies[i];
+            
+            if (!enemy.active) {
+                // 敌人死亡时创建爆炸效果
+                if (enemy.isDead) {
+                    this.particleSystem.createExplosion(enemy.x, enemy.y);
+                    this.player.addScore(enemy.scoreValue);
+                }
+                
+                this.enemies.splice(i, 1);
+                continue;
+            }
+            
+            // 更新敌人并获取发射的子弹
+            const bullets = enemy.update(dt, this.player);
+            
+            // 添加敌人子弹到子弹系统
+            if (bullets && bullets.length > 0) {
+                this.bulletSystem.addBullets(bullets, true);
+            }
+        }
+        
+        // 处理子弹与敌人的碰撞效果
+        this.handleBulletCollisions();
+    }
+    
+    /**
+     * 处理子弹碰撞效果
+     */
+    handleBulletCollisions() {
+        // 检测玩家子弹与敌人碰撞
+        this.bulletSystem.bullets.forEach(bullet => {
+            if (!bullet.active) return;
+            
+            this.enemies.forEach(enemy => {
+                if (!enemy.active || enemy.isDead) return;
+                
+                if (this.bulletSystem.checkCollision(bullet, enemy)) {
+                    const destroyed = this.bulletSystem.handleBulletHit(bullet, enemy);
+                    
+                    // 创建击中效果
+                    this.particleSystem.createHitEffect(enemy.x, enemy.y);
+                    
+                    if (destroyed || enemy.health <= 0) {
+                        enemy.isDead = true;
+                        enemy.active = false;
+                    }
+                }
+            });
+        });
+        
+        // 检测敌人子弹与玩家碰撞
+        if (!this.player.isInvincible && !this.player.isDead) {
+            this.bulletSystem.enemyBullets.forEach(bullet => {
+                if (!bullet.active) return;
+                
+                if (this.bulletSystem.checkCollision(bullet, this.player)) {
+                    this.bulletSystem.handleBulletHit(bullet, this.player);
+                    
+                    // 创建击中效果
+                    this.particleSystem.createSparks(this.player.x, this.player.y);
+                }
+            });
+        }
+    }
+    
     /**
      * 模拟输入（用于测试）
      */

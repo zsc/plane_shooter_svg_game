@@ -41,9 +41,19 @@ class Player {
         this.score = 0;
         
         // 武器
+        this.weaponManager = null; // 将在Game.js中初始化
         this.fireRate = 5; // 每秒发射次数
         this.fireCooldown = 0;
         this.bullets = [];
+        
+        // 能量系统
+        this.maxEnergy = 100;
+        this.energy = this.maxEnergy;
+        this.energyRegen = 10; // 每秒恢复
+        
+        // 碰撞
+        this.hitboxRadius = 16;
+        this.active = true;
         
         // 边界
         this.bounds = GameConfig.PLAYER.BOUNDS;
@@ -132,23 +142,40 @@ class Player {
      * @param {InputManager} input - 输入管理器
      */
     updateWeapon(deltaTime, input) {
-        // 更新冷却
-        if (this.fireCooldown > 0) {
-            this.fireCooldown -= deltaTime;
-        }
+        // 恢复能量
+        this.energy = Math.min(this.maxEnergy, this.energy + this.energyRegen * deltaTime);
         
-        // 自动射击（或按空格键射击）
-        if (this.fireCooldown <= 0 && (true || input.isKeyDown('Space'))) {
-            this.fire();
-            this.fireCooldown = 1.0 / this.fireRate;
+        // 如果有武器管理器，使用新系统
+        if (this.weaponManager) {
+            // 自动发射主武器
+            const currentTime = Date.now();
+            const bullets = this.weaponManager.fireActiveWeapon(
+                { x: this.x, y: this.y - 30 },
+                currentTime
+            );
+            
+            // 返回子弹数组供游戏系统处理
+            return bullets;
+        } else {
+            // 旧的武器系统（向后兼容）
+            // 更新冷却
+            if (this.fireCooldown > 0) {
+                this.fireCooldown -= deltaTime;
+            }
+            
+            // 自动射击
+            if (this.fireCooldown <= 0) {
+                this.fire();
+                this.fireCooldown = 1.0 / this.fireRate;
+            }
+            
+            // 更新子弹
+            this.updateBullets(deltaTime);
         }
-        
-        // 更新子弹
-        this.updateBullets(deltaTime);
     }
 
     /**
-     * 发射子弹
+     * 发射子弹（旧系统）
      */
     fire() {
         // 简单的子弹对象
@@ -156,15 +183,19 @@ class Player {
             x: this.x,
             y: this.y - 30,
             velocity: { x: 0, y: -500 }, // 向上飞行
+            vx: 0,
+            vy: -500,
             damage: 10,
-            active: true
+            active: true,
+            size: 3,
+            color: '#FFD700'
         };
         
         this.bullets.push(bullet);
     }
 
     /**
-     * 更新子弹
+     * 更新子弹（旧系统）
      * @param {number} deltaTime - 时间增量
      */
     updateBullets(deltaTime) {
@@ -172,8 +203,13 @@ class Player {
             const bullet = this.bullets[i];
             
             // 更新位置
-            bullet.x += bullet.velocity.x * deltaTime;
-            bullet.y += bullet.velocity.y * deltaTime;
+            if (bullet.velocity) {
+                bullet.x += bullet.velocity.x * deltaTime;
+                bullet.y += bullet.velocity.y * deltaTime;
+            } else {
+                bullet.x += (bullet.vx || 0) * deltaTime;
+                bullet.y += (bullet.vy || 0) * deltaTime;
+            }
             
             // 移除超出屏幕的子弹
             if (bullet.y < -10 || bullet.y > GameConfig.CANVAS.HEIGHT + 10 ||

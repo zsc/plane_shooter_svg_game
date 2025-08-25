@@ -34,18 +34,24 @@ class StateMachine {
                 // 绘制简单的星空背景
                 renderer.drawRect(0, 0, GameConfig.CANVAS.WIDTH, GameConfig.CANVAS.HEIGHT, '#001a33');
                 
+                // 绘制一些星星装饰
+                const stars = [
+                    {x: 100, y: 100}, {x: 200, y: 150}, {x: 500, y: 100},
+                    {x: 400, y: 200}, {x: 300, y: 250}, {x: 550, y: 180}
+                ];
+                stars.forEach(star => {
+                    const twinkle = Math.sin(Date.now() * 0.003 + star.x) * 0.5 + 0.5;
+                    renderer.ctx.globalAlpha = 0.3 + twinkle * 0.7;
+                    renderer.drawCircle(star.x, star.y, 2, '#FFFFFF');
+                });
+                renderer.ctx.globalAlpha = 1;
+                
                 // 标题动画效果
-                const titleY = 250 + Math.sin(Date.now() * 0.002) * 10;
+                const titleY = 200 + Math.sin(Date.now() * 0.002) * 10;
                 renderer.drawText('全民飞机大战', 320, titleY, 48, '#FFD700');
                 
-                // 闪烁的开始提示
-                if (Math.floor(Date.now() / 500) % 2 === 0) {
-                    renderer.drawText('按 Enter 开始游戏', 320, 400, 24, '#FFFFFF');
-                }
-                
-                renderer.drawText('按 F3 切换调试模式', 320, 500, 16, '#888888');
-                renderer.drawText('使用方向键或 WASD 控制战机', 320, 550, 16, '#888888');
-                renderer.drawText('按 ESC 暂停游戏', 320, 580, 16, '#888888');
+                // 副标题
+                renderer.drawText('ARCADE SHOOTER', 320, titleY + 50, 16, '#888888');
             },
             exit: () => {
                 console.log('退出菜单状态');

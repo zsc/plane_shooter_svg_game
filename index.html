@@ -11,6 +11,7 @@
             overflow: hidden;
             background: #000;
             font-family: 'Microsoft YaHei', sans-serif;
+            position: relative;
         }
         #gameCanvas {
             display: block;
@@ -27,15 +28,102 @@
             background: rgba(0,0,0,0.7);
             padding: 5px;
             display: none;
+            z-index: 1000;
         }
         #debugInfo.show {
             display: block;
         }
+        
+        /* 开始按钮样式 */
+        #startButton {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px 60px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #FFD700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: 3px solid #FFD700;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
+            transition: all 0.3s ease;
+            z-index: 100;
+            animation: pulse 2s infinite;
+        }
+        
+        #startButton:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.8);
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        }
+        
+        #startButton:active {
+            transform: translate(-50%, -50%) scale(0.95);
+        }
+        
+        #startButton.hidden {
+            display: none;
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
+            }
+            50% {
+                box-shadow: 0 4px 25px rgba(255, 215, 0, 0.8);
+            }
+            100% {
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
+            }
+        }
+        
+        /* 控制提示 */
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #888;
+            font-size: 14px;
+            text-align: center;
+            z-index: 50;
+        }
+        
+        #controls.hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
+    <canvas id="gameCanvas" tabindex="0"></canvas>
     <div id="debugInfo"></div>
+    
+    <!-- 开始按钮 -->
+    <button id="startButton">开始游戏</button>
+    
+    <!-- 暂停按钮（游戏中显示） -->
+    <button id="pauseButton" class="hidden" style="
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        padding: 10px 20px;
+        font-size: 16px;
+        background: rgba(0,0,0,0.7);
+        color: #FFD700;
+        border: 2px solid #FFD700;
+        border-radius: 5px;
+        cursor: pointer;
+        z-index: 100;
+    ">暂停</button>
+    
+    <!-- 控制提示 -->
+    <div id="controls">
+        <p>使用 方向键 或 WASD 控制战机</p>
+        <p>ESC 暂停 | F3 调试模式</p>
+    </div>
     
     <script src="js/core/GameConfig.js"></script>
     <script src="js/core/GameLoop.js"></script>
@@ -45,16 +133,57 @@
     <script src="js/entities/Player.js"></script>
     <script src="js/Game.js"></script>
     <script>
+        let game;
+        
         // 游戏初始化
         window.addEventListener('DOMContentLoaded', () => {
-            const game = new Game();
+            game = new Game();
             game.init();
             game.start();
+            
+            // 获取元素
+            const startButton = document.getElementById('startButton');
+            const controls = document.getElementById('controls');
+            
+            // 开始按钮点击事件
+            startButton.addEventListener('click', () => {
+                // 隐藏按钮和提示
+                startButton.classList.add('hidden');
+                controls.classList.add('hidden');
+                
+                // 切换到游戏状态
+                game.stateMachine.changeState(GameConfig.STATES.PLAYING);
+                
+                // 聚焦画布以接收键盘输入
+                document.getElementById('gameCanvas').focus();
+            });
+            
+            // 监听状态变化，显示/隐藏按钮
+            game.stateMachine.onStateChange((newState) => {
+                if (newState === GameConfig.STATES.MENU) {
+                    startButton.classList.remove('hidden');
+                    controls.classList.remove('hidden');
+                } else if (newState === GameConfig.STATES.PLAYING) {
+                    startButton.classList.add('hidden');
+                    controls.classList.add('hidden');
+                } else if (newState === GameConfig.STATES.GAME_OVER) {
+                    // 游戏结束时显示重新开始按钮
+                    startButton.textContent = '重新开始';
+                    startButton.classList.remove('hidden');
+                }
+            });
             
             // 调试模式切换
             window.addEventListener('keydown', (e) => {
                 if (e.key === 'F3') {
                     document.getElementById('debugInfo').classList.toggle('show');
+                }
+            });
+            
+            // 支持Enter键快速开始（保留原有功能）
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !startButton.classList.contains('hidden')) {
+                    startButton.click();
                 }
             });
         });

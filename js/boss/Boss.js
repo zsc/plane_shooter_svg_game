@@ -401,9 +401,9 @@ class Boss {
             return null;
         }
         
-        // 检查攻击间隔
+        // 检查攻击间隔（将毫秒转换为秒）
         const timeSinceLastAttack = this.stateTime - this.lastAttackTime;
-        if (timeSinceLastAttack < phase.attackInterval) return null;
+        if (timeSinceLastAttack < phase.attackInterval / 1000) return null;
         
         // 选择攻击模式
         const attackType = this.selectAttackPattern(phase);
@@ -760,7 +760,7 @@ class Boss {
     /**
      * 渲染Boss
      */
-    render(renderer) {
+    render(renderer, assetManager = null) {
         if (!this.active || this.isDead) return;
         
         renderer.ctx.save();
@@ -788,8 +788,12 @@ class Boss {
             renderer.ctx.globalAlpha = 0.6 + Math.sin(this.stateTime * 10) * 0.4;
         }
         
-        // 渲染Boss主体
-        this.renderMainBody(renderer);
+        // 渲染Boss主体 - 优先使用资源管理器
+        if (assetManager && assetManager.loaded) {
+            this.renderWithAssets(renderer, assetManager);
+        } else {
+            this.renderMainBody(renderer);
+        }
         
         // 渲染弱点
         this.renderWeakPoints(renderer);
@@ -803,6 +807,27 @@ class Boss {
         }
         
         renderer.ctx.restore();
+    }
+    
+    /**
+     * 使用资源渲染Boss
+     */
+    renderWithAssets(renderer, assetManager) {
+        // 根据Boss ID渲染对应的SVG资源
+        const assetKey = `bosses.${this.id}`;
+        if (assetManager.hasAsset(assetKey)) {
+            assetManager.drawAsset(
+                renderer.ctx,
+                assetKey,
+                this.x,
+                this.y,
+                0, // 旋转角度
+                1  // 缩放
+            );
+        } else {
+            // 降级到基础渲染
+            this.renderMainBody(renderer);
+        }
     }
     
     /**
@@ -953,7 +978,9 @@ class Boss {
             totalPhases: this.phases.length,
             isInvulnerable: this.invulnerable,
             activeWeakPoints: this.activeWeakPoints.length,
-            isDead: this.isDead
+            isDead: this.isDead,
+            accuracy: 0.8,  // 暂时使用默认值，后续可以根据实际命中率计算
+            battleTime: this.stateTime * 1000  // 转换为毫秒
         };
     }
 }

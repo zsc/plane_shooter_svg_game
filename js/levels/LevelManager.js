@@ -61,7 +61,7 @@ class LevelManager {
                 scrollSpeed: 100,
                 waves: [
                     {
-                        startTime: 3,
+                        startTime: 1,  // 改为1秒后开始
                         duration: 15,
                         type: 'warmup',
                         enemyTypes: ['scout'],
@@ -70,7 +70,7 @@ class LevelManager {
                         difficulty: 1.0
                     },
                     {
-                        startTime: 18,
+                        startTime: 16,  // 相应调整
                         duration: 30,
                         type: 'main',
                         enemyTypes: ['scout', 'fighter'],
@@ -79,7 +79,7 @@ class LevelManager {
                         difficulty: 1.2
                     },
                     {
-                        startTime: 48,
+                        startTime: 46,  // 相应调整
                         duration: 20,
                         type: 'intense',
                         enemyTypes: ['fighter', 'interceptor'],
@@ -112,7 +112,7 @@ class LevelManager {
                 scrollSpeed: 120,
                 waves: [
                     {
-                        startTime: 3,
+                        startTime: 1,  // 快速开始
                         duration: 20,
                         type: 'warmup',
                         enemyTypes: ['scout', 'fighter'],
@@ -121,7 +121,7 @@ class LevelManager {
                         difficulty: 1.2
                     },
                     {
-                        startTime: 23,
+                        startTime: 21,  // 相应调整
                         duration: 40,
                         type: 'main',
                         enemyTypes: ['fighter', 'interceptor'],
@@ -130,7 +130,7 @@ class LevelManager {
                         difficulty: 1.5
                     },
                     {
-                        startTime: 63,
+                        startTime: 61,  // 相应调整
                         duration: 30,
                         type: 'intense',
                         enemyTypes: ['interceptor', 'stealth'],
@@ -163,7 +163,7 @@ class LevelManager {
                 scrollSpeed: 150,
                 waves: [
                     {
-                        startTime: 3,
+                        startTime: 1,  // 快速开始
                         duration: 25,
                         type: 'warmup',
                         enemyTypes: ['fighter', 'interceptor'],
@@ -172,7 +172,7 @@ class LevelManager {
                         difficulty: 1.5
                     },
                     {
-                        startTime: 28,
+                        startTime: 26,  // 相应调整
                         duration: 50,
                         type: 'main',
                         enemyTypes: ['interceptor', 'stealth', 'commander'],
@@ -181,7 +181,7 @@ class LevelManager {
                         difficulty: 2.0
                     },
                     {
-                        startTime: 78,
+                        startTime: 76,  // 相应调整
                         duration: 40,
                         type: 'intense',
                         enemyTypes: ['stealth', 'commander', 'interceptor'],
@@ -284,7 +284,7 @@ class LevelManager {
      * 更新关卡阶段
      */
     updateLevelPhase() {
-        if (this.levelPhase === 'intro' && this.levelTime > 3) {
+        if (this.levelPhase === 'intro' && this.levelTime > 0.5) {  // 改为0.5秒后进入主阶段
             this.levelPhase = 'main';
             console.log('进入主战斗阶段');
         }

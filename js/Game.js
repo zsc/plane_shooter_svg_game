@@ -261,10 +261,18 @@ class Game {
                 
                 // 绘制Boss
                 if (this.currentBoss && this.currentBoss.active) {
-                    this.currentBoss.render(renderer);
+                    this.currentBoss.render(renderer, this.assetManager);
                     // 绘制Boss血条
                     if (this.bossManager) {
-                        this.bossManager.renderBossUI(renderer, this.currentBoss);
+                        // 获取Boss状态并传递给UI渲染
+                        const bossStatus = this.currentBoss.getStatus ? this.currentBoss.getStatus() : {
+                            name: this.currentBoss.name || 'Boss',
+                            currentPhase: this.currentBoss.currentPhase || 0,
+                            totalPhases: this.currentBoss.phases ? this.currentBoss.phases.length : 3,
+                            accuracy: 0,
+                            battleTime: Date.now() - (this.bossManager.battleStartTime || Date.now())
+                        };
+                        this.bossManager.renderBossUI(renderer, bossStatus);
                     }
                 }
                 
@@ -621,24 +629,20 @@ class Game {
     
     /**
      * 生成Boss
-     * @param {Object} bossData - Boss数据
+     * @param {Object} boss - Boss实例
      */
-    spawnBoss(bossData) {
-        console.log(`生成Boss: ${bossData.type}`);
+    spawnBoss(boss) {
+        console.log(`Boss出现: ${boss.name || boss.type}`);
         
         // 清除所有普通敌机
         this.enemies = [];
         
-        // 创建Boss实例
-        this.currentBoss = this.bossManager.createBossFromTemplate(bossData.type);
+        // 设置当前Boss
+        this.currentBoss = boss;
         
         if (this.currentBoss) {
-            // 应用关卡特定的Boss属性
-            if (bossData.health) this.currentBoss.maxHealth = this.currentBoss.currentHealth = bossData.health;
-            if (bossData.phases) this.currentBoss.totalPhases = bossData.phases;
-            
-            // Boss入场
-            this.currentBoss.enter();
+            // Boss入场动画
+            this.currentBoss.startEntranceAnimation();
         }
     }
     

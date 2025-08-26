@@ -32,6 +32,38 @@ global.requestAnimationFrame = (callback) => {
     setTimeout(callback, 16);
 };
 
+// Mock Image for AssetManager
+global.Image = class {
+    constructor() {
+        this.onload = null;
+        this.onerror = null;
+        this.src = '';
+    }
+    set src(value) {
+        this._src = value;
+        // 模拟异步加载
+        setTimeout(() => {
+            if (this.onload) this.onload();
+        }, 0);
+    }
+    get src() {
+        return this._src;
+    }
+};
+
+// Mock Blob and URL for SVG handling
+global.Blob = class {
+    constructor(parts, options) {
+        this.parts = parts;
+        this.options = options;
+    }
+};
+
+global.URL = {
+    createObjectURL: (blob) => 'blob:mock-url',
+    revokeObjectURL: (url) => {}
+};
+
 // 模拟Canvas 2D上下文
 const mockContext = {
     clearRect: () => {},
@@ -58,6 +90,7 @@ const mockContext = {
         addColorStop: () => {}
     }),
     setTransform: () => {},
+    drawImage: () => {},
     globalAlpha: 1,
     fillStyle: '',
     strokeStyle: '',

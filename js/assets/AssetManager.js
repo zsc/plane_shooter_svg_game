@@ -13,48 +13,308 @@ class AssetManager {
             // 玩家战机
             player: {
                 fighter: {
-                    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M50,10 L45,25 L45,45 L40,60 L45,70 L45,85 L50,95 L55,85 L55,70 L60,60 L55,45 L55,25 Z" 
-                              fill="#2196F3" stroke="#0D47A1" stroke-width="1.5"/>
-                        <path d="M45,30 L30,50 L30,65 L40,55 L45,50 Z" fill="#64B5F6"/>
-                        <path d="M55,30 L70,50 L70,65 L60,55 L55,50 Z" fill="#64B5F6"/>
-                        <ellipse cx="50" cy="30" rx="6" ry="10" fill="#90CAF9" opacity="0.8"/>
-                        <rect x="48" y="70" width="4" height="10" fill="#FF5722"/>
-                        <path d="M50,85 L48,100 L50,97 L52,100 Z" fill="#FFC107" opacity="0.8"/>
-                        <path d="M47,87 L45,95 L47,93 L49,95 Z" fill="#FFEB3B" opacity="0.9"/>
-                        <path d="M51,87 L53,95 L51,93 L49,95 Z" fill="#FFEB3B" opacity="0.9"/>
-                    </svg>`,
+                    type: 'x3d',
+                    x3d: `<x3d width="100px" height="100px" style="background: transparent;">
+                        <scene>
+                            <transform rotation="1 0 0 0.3">
+                                <!-- 主机身 - 流线型 -->
+                                <transform>
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.13 0.59 0.95" specularColor="0.8 0.9 1"/>
+                                        </appearance>
+                                        <cone bottomRadius="0.25" height="1.2"/>
+                                    </shape>
+                                </transform>
+                                
+                                <!-- 左主翼 -->
+                                <transform translation="-0.4 0 -0.2">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.39 0.71 0.96" specularColor="1 1 1"/>
+                                        </appearance>
+                                        <box size="0.5 0.03 0.4"/>
+                                    </shape>
+                                    <!-- 翼尖 -->
+                                    <transform translation="-0.25 0 0">
+                                        <shape>
+                                            <appearance>
+                                                <material diffuseColor="0.56 0.79 0.98" transparency="0.3"/>
+                                            </appearance>
+                                            <cone bottomRadius="0.05" height="0.2"/>
+                                        </shape>
+                                    </transform>
+                                </transform>
+                                
+                                <!-- 右主翼 -->
+                                <transform translation="0.4 0 -0.2">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.39 0.71 0.96" specularColor="1 1 1"/>
+                                        </appearance>
+                                        <box size="0.5 0.03 0.4"/>
+                                    </shape>
+                                    <!-- 翼尖 -->
+                                    <transform translation="0.25 0 0">
+                                        <shape>
+                                            <appearance>
+                                                <material diffuseColor="0.56 0.79 0.98" transparency="0.3"/>
+                                            </appearance>
+                                            <cone bottomRadius="0.05" height="0.2"/>
+                                        </shape>
+                                    </transform>
+                                </transform>
+                                
+                                <!-- 座舱 -->
+                                <transform translation="0 0.1 0.25">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.56 0.79 0.98" transparency="0.2" specularColor="1 1 1"/>
+                                        </appearance>
+                                        <sphere radius="0.15"/>
+                                    </shape>
+                                </transform>
+                                
+                                <!-- 引擎喷口 -->
+                                <transform translation="0 0 -0.5">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="1 0.35 0.13" emissiveColor="1 0.76 0"/>
+                                        </appearance>
+                                        <cylinder radius="0.1" height="0.2"/>
+                                    </shape>
+                                </transform>
+                                
+                                <!-- 尾翼 -->
+                                <transform translation="0 0.2 -0.4">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.05 0.29 0.57"/>
+                                        </appearance>
+                                        <box size="0.02 0.25 0.2"/>
+                                    </shape>
+                                </transform>
+                            </transform>
+                            
+                            <directionalLight direction="0 -1 1" intensity="0.8" color="1 1 1"/>
+                            <pointLight location="0 2 -2" intensity="0.4" color="0.5 0.7 1"/>
+                            <viewpoint position="0 -0.5 -2.5" orientation="1 0 0 3.14159"/>
+                        </scene>
+                    </x3d>`,
                     width: 40,
                     height: 50
                 },
                 bomber: {
-                    svg: `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="45" y="20" width="30" height="60" rx="5" fill="#4CAF50" stroke="#1B5E20" stroke-width="2"/>
-                        <path d="M45,35 L25,50 L25,70 L45,60 Z" fill="#66BB6A" stroke="#2E7D32" stroke-width="1.5"/>
-                        <path d="M75,35 L95,50 L95,70 L75,60 Z" fill="#66BB6A" stroke="#2E7D32" stroke-width="1.5"/>
-                        <ellipse cx="60" cy="35" rx="8" ry="12" fill="#81C784" opacity="0.8"/>
-                        <rect x="28" y="55" width="8" height="4" fill="#FF9800"/>
-                        <rect x="84" y="55" width="8" height="4" fill="#FF9800"/>
-                        <circle cx="52" cy="75" r="4" fill="#FF5722"/>
-                        <circle cx="60" cy="75" r="4" fill="#FF5722"/>
-                        <circle cx="68" cy="75" r="4" fill="#FF5722"/>
-                        <path d="M52,78 L50,92 L54,92 Z" fill="#FFC107" opacity="0.9"/>
-                        <path d="M60,78 L58,92 L62,92 Z" fill="#FFC107" opacity="0.9"/>
-                        <path d="M68,78 L66,92 L70,92 Z" fill="#FFC107" opacity="0.9"/>
-                    </svg>`,
+                    type: 'x3d',
+                    x3d: `<x3d width="120px" height="120px" style="background: transparent;">
+                        <scene>
+                            <transform rotation="1 0 0 0.3">
+                                <!-- 厚重主体 -->
+                                <shape>
+                                    <appearance>
+                                        <material diffuseColor="0.3 0.69 0.31" specularColor="0.5 0.8 0.5"/>
+                                    </appearance>
+                                    <box size="0.5 0.35 1.2"/>
+                                </shape>
+                                
+                                <!-- 装甲层 -->
+                                <transform translation="0 0.15 0.1">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.11 0.37 0.13" specularColor="0.3 0.5 0.3"/>
+                                        </appearance>
+                                        <box size="0.4 0.1 0.8"/>
+                                    </shape>
+                                </transform>
+                                
+                                <!-- 左翼 -->
+                                <transform translation="-0.55 0 -0.1">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.4 0.73 0.42"/>
+                                        </appearance>
+                                        <box size="0.6 0.08 0.7"/>
+                                    </shape>
+                                    <!-- 武器挂架 -->
+                                    <transform translation="0 -0.1 0.2">
+                                        <shape>
+                                            <appearance>
+                                                <material diffuseColor="1 0.6 0" emissiveColor="0.5 0.3 0"/>
+                                            </appearance>
+                                            <cylinder radius="0.06" height="0.15"/>
+                                        </shape>
+                                    </transform>
+                                    <transform translation="0 -0.1 -0.1">
+                                        <shape>
+                                            <appearance>
+                                                <material diffuseColor="1 0.6 0" emissiveColor="0.5 0.3 0"/>
+                                            </appearance>
+                                            <cylinder radius="0.06" height="0.15"/>
+                                        </shape>
+                                    </transform>
+                                </transform>
+                                
+                                <!-- 右翼 -->
+                                <transform translation="0.55 0 -0.1">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.4 0.73 0.42"/>
+                                        </appearance>
+                                        <box size="0.6 0.08 0.7"/>
+                                    </shape>
+                                    <!-- 武器挂架 -->
+                                    <transform translation="0 -0.1 0.2">
+                                        <shape>
+                                            <appearance>
+                                                <material diffuseColor="1 0.6 0" emissiveColor="0.5 0.3 0"/>
+                                            </appearance>
+                                            <cylinder radius="0.06" height="0.15"/>
+                                        </shape>
+                                    </transform>
+                                    <transform translation="0 -0.1 -0.1">
+                                        <shape>
+                                            <appearance>
+                                                <material diffuseColor="1 0.6 0" emissiveColor="0.5 0.3 0"/>
+                                            </appearance>
+                                            <cylinder radius="0.06" height="0.15"/>
+                                        </shape>
+                                    </transform>
+                                </transform>
+                                
+                                <!-- 驾驶舱 -->
+                                <transform translation="0 0.12 0.3">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.51 0.78 0.52" transparency="0.25" specularColor="1 1 1"/>
+                                        </appearance>
+                                        <box size="0.25 0.15 0.3"/>
+                                    </shape>
+                                </transform>
+                                
+                                <!-- 三引擎 -->
+                                <transform translation="0 -0.1 -0.5">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="1 0.35 0.13" emissiveColor="1 0.76 0"/>
+                                        </appearance>
+                                        <cylinder radius="0.12" height="0.25"/>
+                                    </shape>
+                                </transform>
+                                <transform translation="-0.2 -0.1 -0.5">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="1 0.35 0.13" emissiveColor="1 0.76 0"/>
+                                        </appearance>
+                                        <cylinder radius="0.08" height="0.2"/>
+                                    </shape>
+                                </transform>
+                                <transform translation="0.2 -0.1 -0.5">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="1 0.35 0.13" emissiveColor="1 0.76 0"/>
+                                        </appearance>
+                                        <cylinder radius="0.08" height="0.2"/>
+                                    </shape>
+                                </transform>
+                            </transform>
+                            
+                            <directionalLight direction="0 -1 1" intensity="0.8"/>
+                            <pointLight location="0 2 -2" intensity="0.4" color="0.7 1 0.7"/>
+                            <viewpoint position="0 -0.5 -3" orientation="1 0 0 3.14159"/>
+                        </scene>
+                    </x3d>`,
                     width: 50,
                     height: 60
                 },
                 interceptor: {
-                    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M50,5 L40,30 L40,60 L45,80 L50,85 L55,80 L60,60 L60,30 Z" 
-                              fill="#9C27B0" stroke="#6A1B9A" stroke-width="1.5" opacity="0.9"/>
-                        <path d="M40,35 L20,65 L40,55 Z" fill="#BA68C8" stroke="#6A1B9A" stroke-width="1" opacity="0.8"/>
-                        <path d="M60,35 L80,65 L60,55 Z" fill="#BA68C8" stroke="#6A1B9A" stroke-width="1" opacity="0.8"/>
-                        <ellipse cx="50" cy="25" rx="5" ry="8" fill="#E1BEE7" opacity="0.6"/>
-                        <ellipse cx="50" cy="78" rx="8" ry="3" fill="#7B1FA2"/>
-                        <path d="M50,81 L45,95 L50,92 L55,95 Z" fill="#00BCD4" opacity="0.7"/>
-                    </svg>`,
+                    type: 'x3d',
+                    x3d: `<x3d width="100px" height="100px" style="background: transparent;">
+                        <scene>
+                            <transform rotation="1 0 0 0.3">
+                                <!-- 尖锐机身 -->
+                                <transform>
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.61 0.15 0.69" specularColor="1 0.5 1"/>
+                                        </appearance>
+                                        <cone bottomRadius="0.15" height="1.3"/>
+                                    </shape>
+                                </transform>
+                                
+                                <!-- 后掠左翼 -->
+                                <transform translation="-0.3 0 -0.3" rotation="0 0 1 -0.5">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.73 0.41 0.78" specularColor="1 0.7 1" transparency="0.1"/>
+                                        </appearance>
+                                        <box size="0.6 0.02 0.3"/>
+                                    </shape>
+                                </transform>
+                                
+                                <!-- 后掠右翼 -->
+                                <transform translation="0.3 0 -0.3" rotation="0 0 1 0.5">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.73 0.41 0.78" specularColor="1 0.7 1" transparency="0.1"/>
+                                        </appearance>
+                                        <box size="0.6 0.02 0.3"/>
+                                    </shape>
+                                </transform>
+                                
+                                <!-- 小型前翼 -->
+                                <transform translation="-0.15 0 0.3">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.88 0.75 0.91" transparency="0.4"/>
+                                        </appearance>
+                                        <box size="0.2 0.01 0.15"/>
+                                    </shape>
+                                </transform>
+                                <transform translation="0.15 0 0.3">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.88 0.75 0.91" transparency="0.4"/>
+                                        </appearance>
+                                        <box size="0.2 0.01 0.15"/>
+                                    </shape>
+                                </transform>
+                                
+                                <!-- 透明座舱 -->
+                                <transform translation="0 0.05 0.2">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.88 0.75 0.91" transparency="0.4" specularColor="1 1 1"/>
+                                        </appearance>
+                                        <sphere radius="0.1"/>
+                                    </shape>
+                                </transform>
+                                
+                                <!-- 等离子推进器 -->
+                                <transform translation="0 0 -0.55">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0 0.74 0.83" emissiveColor="0 0.74 0.83" transparency="0.3"/>
+                                        </appearance>
+                                        <sphere radius="0.12"/>
+                                    </shape>
+                                </transform>
+                                
+                                <!-- 垂直稳定翼 -->
+                                <transform translation="0 0.15 -0.4">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.48 0.11 0.42"/>
+                                        </appearance>
+                                        <box size="0.02 0.2 0.15"/>
+                                    </shape>
+                                </transform>
+                            </transform>
+                            
+                            <directionalLight direction="0 -1 1" intensity="0.9" color="1 1 1"/>
+                            <pointLight location="0 2 -2" intensity="0.5" color="1 0.5 1"/>
+                            <viewpoint position="0 -0.5 -2.5" orientation="1 0 0 3.14159"/>
+                        </scene>
+                    </x3d>`,
                     width: 40,
                     height: 50
                 }
@@ -215,22 +475,407 @@ class AssetManager {
                 }
             },
             
+            // 敌人
+            enemies: {
+                scout: {
+                    type: 'x3d',
+                    x3d: `<x3d width="80px" height="80px" style="background: transparent;">
+                        <scene>
+                            <transform rotation="1 0 0 -0.3">
+                                <!-- 主机身 -->
+                                <shape>
+                                    <appearance>
+                                        <material diffuseColor="0.545 0.271 0.075" specularColor="0.3 0.3 0.3"/>
+                                    </appearance>
+                                    <box size="0.4 0.2 0.8"/>
+                                </shape>
+                                
+                                <!-- 左翼 -->
+                                <transform translation="-0.35 0 0">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.627 0.322 0.176"/>
+                                        </appearance>
+                                        <box size="0.3 0.05 0.4"/>
+                                    </shape>
+                                </transform>
+                                
+                                <!-- 右翼 -->
+                                <transform translation="0.35 0 0">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.627 0.322 0.176"/>
+                                        </appearance>
+                                        <box size="0.3 0.05 0.4"/>
+                                    </shape>
+                                </transform>
+                                
+                                <!-- 驾驶舱 -->
+                                <transform translation="0 0.08 0.15">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.2 0.2 0.2" transparency="0.4"/>
+                                        </appearance>
+                                        <sphere radius="0.12"/>
+                                    </shape>
+                                </transform>
+                                
+                                <!-- 引擎 -->
+                                <transform translation="0 0 -0.35">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="1 0 0" emissiveColor="0.5 0 0"/>
+                                        </appearance>
+                                        <sphere radius="0.08"/>
+                                    </shape>
+                                </transform>
+                            </transform>
+                            
+                            <directionalLight direction="0 -1 -1" intensity="0.7"/>
+                            <pointLight location="0 2 2" intensity="0.3"/>
+                            <viewpoint position="0 0 2.5"/>
+                        </scene>
+                    </x3d>`,
+                    width: 50,
+                    height: 60
+                },
+                fighter: {
+                    type: 'x3d',
+                    x3d: `<x3d width="70px" height="70px" style="background: transparent;">
+                        <scene>
+                            <transform rotation="1 0 0 -0.3">
+                                <!-- 流线型机身 -->
+                                <shape>
+                                    <appearance>
+                                        <material diffuseColor="0.294 0 0.51" specularColor="0.5 0.5 1"/>
+                                    </appearance>
+                                    <cone bottomRadius="0.2" height="0.9"/>
+                                </shape>
+                                
+                                <!-- 后掠翼左 -->
+                                <transform translation="-0.3 0 -0.1" rotation="0 0 1 0.3">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.416 0.051 0.678" specularColor="0.7 0.7 1"/>
+                                        </appearance>
+                                        <box size="0.35 0.02 0.25"/>
+                                    </shape>
+                                </transform>
+                                
+                                <!-- 后掠翼右 -->
+                                <transform translation="0.3 0 -0.1" rotation="0 0 1 -0.3">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.416 0.051 0.678" specularColor="0.7 0.7 1"/>
+                                        </appearance>
+                                        <box size="0.35 0.02 0.25"/>
+                                    </shape>
+                                </transform>
+                                
+                                <!-- 座舱 -->
+                                <transform translation="0 0.05 0.2">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.1 0.1 0.3" transparency="0.3" specularColor="1 1 1"/>
+                                        </appearance>
+                                        <sphere radius="0.1"/>
+                                    </shape>
+                                </transform>
+                                
+                                <!-- 推进器 -->
+                                <transform translation="0 0 -0.4">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="1 0 1" emissiveColor="1 0 0.5"/>
+                                        </appearance>
+                                        <cylinder radius="0.08" height="0.15"/>
+                                    </shape>
+                                </transform>
+                            </transform>
+                            
+                            <directionalLight direction="0 -1 -1" intensity="0.8"/>
+                            <pointLight location="0 1 2" intensity="0.4" color="0.8 0.8 1"/>
+                            <viewpoint position="0 0 2.5"/>
+                        </scene>
+                    </x3d>`,
+                    width: 40,
+                    height: 55
+                },
+                bomber: {
+                    type: 'x3d',
+                    x3d: `<x3d width="100px" height="100px" style="background: transparent;">
+                        <scene>
+                            <transform rotation="1 0 0 -0.3">
+                                <!-- 厚重主体 -->
+                                <shape>
+                                    <appearance>
+                                        <material diffuseColor="0.173 0.243 0.314" specularColor="0.2 0.2 0.2"/>
+                                    </appearance>
+                                    <box size="0.6 0.3 1"/>
+                                </shape>
+                                
+                                <!-- 装甲板 -->
+                                <transform translation="0 0.12 0.2">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.102 0.145 0.184" specularColor="0.5 0.5 0.5"/>
+                                        </appearance>
+                                        <box size="0.5 0.1 0.4"/>
+                                    </shape>
+                                </transform>
+                                
+                                <!-- 左翼与武器 -->
+                                <transform translation="-0.5 0 0">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.204 0.286 0.369"/>
+                                        </appearance>
+                                        <box size="0.4 0.1 0.6"/>
+                                    </shape>
+                                    <!-- 武器舱 -->
+                                    <transform translation="0 -0.08 0.1">
+                                        <shape>
+                                            <appearance>
+                                                <material diffuseColor="0.906 0.298 0.235" emissiveColor="0.3 0 0"/>
+                                            </appearance>
+                                            <box size="0.15 0.08 0.2"/>
+                                        </shape>
+                                    </transform>
+                                </transform>
+                                
+                                <!-- 右翼与武器 -->
+                                <transform translation="0.5 0 0">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.204 0.286 0.369"/>
+                                        </appearance>
+                                        <box size="0.4 0.1 0.6"/>
+                                    </shape>
+                                    <!-- 武器舱 -->
+                                    <transform translation="0 -0.08 0.1">
+                                        <shape>
+                                            <appearance>
+                                                <material diffuseColor="0.906 0.298 0.235" emissiveColor="0.3 0 0"/>
+                                            </appearance>
+                                            <box size="0.15 0.08 0.2"/>
+                                        </shape>
+                                    </transform>
+                                </transform>
+                                
+                                <!-- 双引擎 -->
+                                <transform translation="-0.15 0 -0.45">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="1 0.42 0.42" emissiveColor="0.5 0.1 0.1"/>
+                                        </appearance>
+                                        <cylinder radius="0.1" height="0.2"/>
+                                    </shape>
+                                </transform>
+                                <transform translation="0.15 0 -0.45">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="1 0.42 0.42" emissiveColor="0.5 0.1 0.1"/>
+                                        </appearance>
+                                        <cylinder radius="0.1" height="0.2"/>
+                                    </shape>
+                                </transform>
+                            </transform>
+                            
+                            <directionalLight direction="0 -1 -1" intensity="0.6"/>
+                            <directionalLight direction="1 0 0" intensity="0.3"/>
+                            <viewpoint position="0 0.3 3"/>
+                        </scene>
+                    </x3d>`,
+                    width: 70,
+                    height: 90
+                },
+                elite: {
+                    type: 'x3d',
+                    x3d: `<x3d width="90px" height="90px" style="background: transparent;">
+                        <scene>
+                            <transform rotation="1 0 0 -0.3">
+                                <!-- 精英机身 -->
+                                <shape>
+                                    <appearance>
+                                        <material diffuseColor="1 0.843 0" specularColor="1 1 0.5"/>
+                                    </appearance>
+                                    <box size="0.5 0.25 0.9"/>
+                                </shape>
+                                
+                                <!-- 前锋装甲 -->
+                                <transform translation="0 0 0.35">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="1 0.647 0" specularColor="1 0.8 0"/>
+                                        </appearance>
+                                        <cone bottomRadius="0.25" height="0.3"/>
+                                    </shape>
+                                </transform>
+                                
+                                <!-- 左侧翼 -->
+                                <transform translation="-0.45 0 -0.1">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="1 0.78 0" specularColor="1 0.9 0.3"/>
+                                        </appearance>
+                                        <box size="0.4 0.06 0.5"/>
+                                    </shape>
+                                    <!-- 能量武器 -->
+                                    <transform translation="0 -0.05 0.15">
+                                        <shape>
+                                            <appearance>
+                                                <material diffuseColor="1 0 0" emissiveColor="1 0 0" transparency="0.2"/>
+                                            </appearance>
+                                            <sphere radius="0.08"/>
+                                        </shape>
+                                    </transform>
+                                </transform>
+                                
+                                <!-- 右侧翼 -->
+                                <transform translation="0.45 0 -0.1">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="1 0.78 0" specularColor="1 0.9 0.3"/>
+                                        </appearance>
+                                        <box size="0.4 0.06 0.5"/>
+                                    </shape>
+                                    <!-- 能量武器 -->
+                                    <transform translation="0 -0.05 0.15">
+                                        <shape>
+                                            <appearance>
+                                                <material diffuseColor="1 0 0" emissiveColor="1 0 0" transparency="0.2"/>
+                                            </appearance>
+                                            <sphere radius="0.08"/>
+                                        </shape>
+                                    </transform>
+                                </transform>
+                                
+                                <!-- 高级座舱 -->
+                                <transform translation="0 0.1 0.1">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.2 0.2 0.2" transparency="0.2" specularColor="1 1 1"/>
+                                        </appearance>
+                                        <box size="0.3 0.15 0.25"/>
+                                    </shape>
+                                </transform>
+                                
+                                <!-- 推进系统 -->
+                                <transform translation="0 0 -0.4">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="1 0.271 0" emissiveColor="1 0.4 0"/>
+                                        </appearance>
+                                        <cylinder radius="0.12" height="0.2"/>
+                                    </shape>
+                                </transform>
+                            </transform>
+                            
+                            <directionalLight direction="0 -1 -1" intensity="0.9"/>
+                            <pointLight location="0 2 2" intensity="0.5" color="1 0.9 0.7"/>
+                            <viewpoint position="0 0.2 2.8"/>
+                        </scene>
+                    </x3d>`,
+                    width: 60,
+                    height: 80
+                }
+            },
+            
             // Boss
             bosses: {
                 bomber_commander: {
-                    svg: `<svg viewBox="0 0 150 150" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="45" y="30" width="60" height="80" rx="10" fill="#2C3E50" stroke="#1A252F" stroke-width="3"/>
-                        <path d="M45,50 L10,65 L10,85 L45,75 Z" fill="#34495E" stroke="#1A252F" stroke-width="2"/>
-                        <path d="M105,50 L140,65 L140,85 L105,75 Z" fill="#34495E" stroke="#1A252F" stroke-width="2"/>
-                        <rect x="20" y="72" width="15" height="5" fill="#E74C3C"/>
-                        <rect x="115" y="72" width="15" height="5" fill="#E74C3C"/>
-                        <rect x="60" y="40" width="30" height="15" rx="3" fill="#3498DB" opacity="0.8"/>
-                        <circle cx="55" cy="100" r="5" fill="#FF6B6B"/>
-                        <circle cx="75" cy="100" r="5" fill="#FF6B6B"/>
-                        <circle cx="95" cy="100" r="5" fill="#FF6B6B"/>
-                        <rect x="50" y="60" width="50" height="30" fill="#1A252F" opacity="0.3"/>
-                        <text x="75" y="80" text-anchor="middle" fill="#FFD700" font-size="12" font-weight="bold">B-01</text>
-                    </svg>`,
+                    type: 'x3d',
+                    x3d: `<x3d width="150px" height="150px" style="background: transparent;">
+                        <scene>
+                            <transform rotation="0.3 1 0 0.5">
+                                <!-- 主机身 -->
+                                <transform>
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.17 0.24 0.31" specularColor="0.5 0.5 0.5"/>
+                                        </appearance>
+                                        <box size="1.2 0.4 1.6"/>
+                                    </shape>
+                                </transform>
+                                
+                                <!-- 左翼 -->
+                                <transform translation="-0.9 0 0">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.2 0.27 0.37" specularColor="0.3 0.3 0.3"/>
+                                        </appearance>
+                                        <box size="0.7 0.1 1.2"/>
+                                    </shape>
+                                    <!-- 左翼武器 -->
+                                    <transform translation="0 -0.1 0.3">
+                                        <shape>
+                                            <appearance>
+                                                <material diffuseColor="0.91 0.3 0.24" emissiveColor="0.5 0 0"/>
+                                            </appearance>
+                                            <cylinder radius="0.08" height="0.3"/>
+                                        </shape>
+                                    </transform>
+                                </transform>
+                                
+                                <!-- 右翼 -->
+                                <transform translation="0.9 0 0">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.2 0.27 0.37" specularColor="0.3 0.3 0.3"/>
+                                        </appearance>
+                                        <box size="0.7 0.1 1.2"/>
+                                    </shape>
+                                    <!-- 右翼武器 -->
+                                    <transform translation="0 -0.1 0.3">
+                                        <shape>
+                                            <appearance>
+                                                <material diffuseColor="0.91 0.3 0.24" emissiveColor="0.5 0 0"/>
+                                            </appearance>
+                                            <cylinder radius="0.08" height="0.3"/>
+                                        </shape>
+                                    </transform>
+                                </transform>
+                                
+                                <!-- 驾驶舱 -->
+                                <transform translation="0 0.15 0.3">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.2 0.58 0.82" transparency="0.3" specularColor="1 1 1"/>
+                                        </appearance>
+                                        <box size="0.4 0.2 0.3"/>
+                                    </shape>
+                                </transform>
+                                
+                                <!-- 引擎喷口 -->
+                                <transform translation="0 -0.1 -0.7">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="1 0.42 0.42" emissiveColor="1 0.3 0.3"/>
+                                        </appearance>
+                                        <cylinder radius="0.15" height="0.2"/>
+                                    </shape>
+                                </transform>
+                                
+                                <!-- 尾翼 -->
+                                <transform translation="0 0.25 -0.6">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.1 0.15 0.18"/>
+                                        </appearance>
+                                        <box size="0.05 0.4 0.3"/>
+                                    </shape>
+                                </transform>
+                            </transform>
+                            
+                            <!-- 光照 -->
+                            <directionalLight direction="0 -0.5 -1" intensity="0.8"/>
+                            <directionalLight direction="1 0 0" intensity="0.3" color="1 0.8 0.8"/>
+                            <pointLight location="0 2 3" intensity="0.4"/>
+                            
+                            <!-- 视角 -->
+                            <viewpoint position="0 0.5 3" orientation="-0.1 0 0 0"/>
+                        </scene>
+                    </x3d>`,
                     width: 120,
                     height: 120
                 },
@@ -339,9 +984,15 @@ class AssetManager {
     }
     
     /**
-     * 将SVG转换为Image对象
+     * 将SVG或X3D转换为Image对象
      */
     async loadSVGAsImage(key, data) {
+        // 检查是否是X3D
+        if (data.type === 'x3d') {
+            return this.loadX3DAsImage(key, data);
+        }
+        
+        // 原SVG加载逻辑
         return new Promise((resolve, reject) => {
             const img = new Image();
             const svgBlob = new Blob([data.svg], { type: 'image/svg+xml' });
@@ -366,6 +1017,60 @@ class AssetManager {
             };
             
             img.src = url;
+        });
+    }
+    
+    /**
+     * 将X3D转换为Image对象
+     */
+    async loadX3DAsImage(key, data) {
+        return new Promise((resolve) => {
+            // 创建临时容器
+            const container = document.createElement('div');
+            container.style.position = 'absolute';
+            container.style.left = '-1000px';
+            container.style.top = '-1000px';
+            container.innerHTML = data.x3d;
+            document.body.appendChild(container);
+            
+            // 等待X3DOM初始化
+            setTimeout(() => {
+                const x3dElement = container.querySelector('x3d');
+                if (x3dElement) {
+                    // 等待渲染完成
+                    setTimeout(() => {
+                        const x3dCanvas = x3dElement.querySelector('canvas');
+                        if (x3dCanvas) {
+                            // 创建图像
+                            const img = new Image();
+                            img.onload = () => {
+                                this.assets.set(key, {
+                                    image: img,
+                                    width: data.width,
+                                    height: data.height,
+                                    type: 'x3d'
+                                });
+                                console.log(`X3D Boss资源加载成功: ${key}`);
+                                
+                                // 清理临时容器
+                                document.body.removeChild(container);
+                                resolve();
+                            };
+                            
+                            // 转换canvas到图像
+                            img.src = x3dCanvas.toDataURL();
+                        } else {
+                            console.error(`X3D canvas未找到: ${key}`);
+                            document.body.removeChild(container);
+                            resolve();
+                        }
+                    }, 500); // 等待渲染
+                } else {
+                    console.error(`X3D元素未找到: ${key}`);
+                    document.body.removeChild(container);
+                    resolve();
+                }
+            }, 100); // 等待X3DOM初始化
         });
     }
     

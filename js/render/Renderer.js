@@ -409,12 +409,52 @@ class Renderer {
             );
         }
         
-        // 分数
-        this.drawText(
-            `分数: ${gameData.score}`,
-            this.canvas.width - 100, 30,
-            18, '#FFD700'
-        );
+        // 分数显示（assets.html 样式）
+        const scoreX = this.canvas.width - 120;
+        const scoreY = 20;
+        const scoreWidth = 100;
+        const scoreHeight = 40;
+        
+        // 背景框
+        this.ctx.save();
+        this.ctx.fillStyle = '#1A237E';
+        this.ctx.strokeStyle = '#3F51B5';
+        this.ctx.lineWidth = 2;
+        
+        // 绘制圆角矩形（兼容性处理）
+        this.ctx.beginPath();
+        if (this.ctx.roundRect) {
+            this.ctx.roundRect(scoreX, scoreY, scoreWidth, scoreHeight, 5);
+        } else {
+            // 手动绘制圆角矩形
+            const radius = 5;
+            this.ctx.moveTo(scoreX + radius, scoreY);
+            this.ctx.lineTo(scoreX + scoreWidth - radius, scoreY);
+            this.ctx.arcTo(scoreX + scoreWidth, scoreY, scoreX + scoreWidth, scoreY + radius, radius);
+            this.ctx.lineTo(scoreX + scoreWidth, scoreY + scoreHeight - radius);
+            this.ctx.arcTo(scoreX + scoreWidth, scoreY + scoreHeight, scoreX + scoreWidth - radius, scoreY + scoreHeight, radius);
+            this.ctx.lineTo(scoreX + radius, scoreY + scoreHeight);
+            this.ctx.arcTo(scoreX, scoreY + scoreHeight, scoreX, scoreY + scoreHeight - radius, radius);
+            this.ctx.lineTo(scoreX, scoreY + radius);
+            this.ctx.arcTo(scoreX, scoreY, scoreX + radius, scoreY, radius);
+        }
+        this.ctx.fill();
+        this.ctx.stroke();
+        
+        // SCORE 标题
+        this.ctx.fillStyle = '#FFD700';
+        this.ctx.font = 'bold 12px Microsoft YaHei';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('SCORE', scoreX + scoreWidth/2, scoreY + 15);
+        
+        // 分数数字（格式化为 xxx,xxx）
+        const formattedScore = gameData.score.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        this.ctx.fillStyle = 'white';
+        this.ctx.font = 'bold 14px Microsoft YaHei';
+        this.ctx.fillText(formattedScore, scoreX + scoreWidth/2, scoreY + 30);
+        
+        this.ctx.restore();
         
         // FPS显示
         if (GameConfig.RENDER.SHOW_FPS && gameData.fps !== undefined) {

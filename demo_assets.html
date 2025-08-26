@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>游戏资源演示 - 全民飞机大战</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Microsoft YaHei', sans-serif;
+            color: white;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .demo-section {
+            margin-bottom: 40px;
+        }
+        .demo-section h2 {
+            color: #FFD700;
+            border-bottom: 2px solid #FFD700;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        #gameCanvas {
+            display: block;
+            margin: 20px auto;
+            border: 2px solid #FFD700;
+            background: #001a33;
+        }
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .controls button {
+            margin: 0 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background: rgba(255,215,0,0.8);
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .controls button:hover {
+            background: #FFD700;
+            transform: scale(1.05);
+        }
+        .info {
+            text-align: center;
+            margin: 20px 0;
+            padding: 10px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1>🎮 游戏资源演示</h1>
+        
+        <div class="demo-section">
+            <h2>资源展示画布</h2>
+            <canvas id="gameCanvas" width="800" height="600"></canvas>
+            
+            <div class="controls">
+                <button onclick="showPlayerAssets()">玩家战机</button>
+                <button onclick="showEnemyAssets()">敌机展示</button>
+                <button onclick="showBulletAssets()">子弹效果</button>
+                <button onclick="showCombatDemo()">战斗演示</button>
+                <button onclick="clearCanvas()">清空画布</button>
+            </div>
+            
+            <div class="info">
+                <p>点击上方按钮查看不同的游戏资源</p>
+                <p>当前展示: <span id="currentDemo">无</span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载游戏脚本 -->
+    <script src="js/core/GameConfig.js"></script>
+    <script src="js/assets/AssetManager.js"></script>
+    <script src="js/render/Renderer.js"></script>
+    
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const assetManager = new AssetManager();
+        let animationId = null;
+        
+        // 初始化资源
+        assetManager.init().then(() => {
+            console.log('资源加载完成');
+            document.getElementById('currentDemo').textContent = '资源已加载';
+        });
+        
+        // 清空画布
+        function clearCanvas() {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // 绘制背景
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#001a33');
+            gradient.addColorStop(1, '#003366');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('currentDemo').textContent = '已清空';
+        }
+        
+        // 展示玩家战机
+        function showPlayerAssets() {
+            clearCanvas();
+            document.getElementById('currentDemo').textContent = '玩家战机';
+            
+            // 绘制三种战机
+            const types = ['fighter', 'bomber', 'interceptor'];
+            const names = ['战斗机', '轰炸机', '拦截机'];
+            
+            types.forEach((type, index) => {
+                const x = 200 + index * 200;
+                const y = 200;
+                
+                // 绘制战机
+                assetManager.drawAsset(ctx, `player.${type}`, x, y, 0, 1.5);
+                
+                // 绘制标签
+                ctx.fillStyle = '#FFD700';
+                ctx.font = '20px Microsoft YaHei';
+                ctx.textAlign = 'center';
+                ctx.fillText(names[index], x, y + 80);
+                ctx.fillText(`数字键 ${index + 1}`, x, y + 105);
+            });
+        }
+        
+        // 展示敌机
+        function showEnemyAssets() {
+            clearCanvas();
+            document.getElementById('currentDemo').textContent = '敌机类型';
+            
+            const enemies = [
+                { type: 'scout', name: '侦察机', tier: 1 },
+                { type: 'fighter', name: '战斗机', tier: 2 },
+                { type: 'bomber', name: '轰炸机', tier: 2 },
+                { type: 'interceptor', name: '拦截机', tier: 3 },
+                { type: 'stealth', name: '隐形机', tier: 4 },
+                { type: 'commander', name: '指挥机', tier: 5 }
+            ];
+            
+            enemies.forEach((enemy, index) => {
+                const x = 150 + (index % 3) * 250;
+                const y = 200 + Math.floor(index / 3) * 200;
+                
+                // 绘制敌机
+                assetManager.drawAsset(ctx, `enemies.${enemy.type}`, x, y, 0, 1.2);
+                
+                // 绘制信息
+                ctx.fillStyle = '#FFD700';
+                ctx.font = '16px Microsoft YaHei';
+                ctx.textAlign = 'center';
+                ctx.fillText(enemy.name, x, y + 60);
+                ctx.fillStyle = '#888888';
+                ctx.font = '14px Microsoft YaHei';
+                ctx.fillText(`Tier ${enemy.tier}`, x, y + 80);
+            });
+        }
+        
+        // 展示子弹效果
+        function showBulletAssets() {
+            clearCanvas();
+            document.getElementById('currentDemo').textContent = '子弹类型';
+            
+            let bulletY = 500;
+            
+            function animateBullets() {
+                clearCanvas();
+                
+                // 更新子弹位置
+                bulletY -= 5;
+                if (bulletY < 100) bulletY = 500;
+                
+                // 绘制不同类型的子弹
+                const bullets = [
+                    { type: 'standard', name: '标准弹', x: 200 },
+                    { type: 'laser', name: '激光', x: 300 },
+                    { type: 'missile', name: '导弹', x: 400 },
+                    { type: 'enemyBullet', name: '敌弹', x: 500 }
+                ];
+                
+                bullets.forEach(bullet => {
+                    // 绘制子弹
+                    assetManager.drawAsset(
+                        ctx, 
+                        `bullets.${bullet.type}`, 
+                        bullet.x, 
+                        bulletY,
+                        0,
+                        2
+                    );
+                    
+                    // 绘制标签
+                    ctx.fillStyle = '#FFD700';
+                    ctx.font = '16px Microsoft YaHei';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(bullet.name, bullet.x, 550);
+                });
+                
+                animationId = requestAnimationFrame(animateBullets);
+            }
+            
+            animateBullets();
+        }
+        
+        // 战斗演示
+        function showCombatDemo() {
+            clearCanvas();
+            document.getElementById('currentDemo').textContent = '战斗场景';
+            
+            let time = 0;
+            const player = { x: 400, y: 500, type: 'fighter' };
+            const enemies = [
+                { x: 200, y: 150, type: 'scout', vx: 1 },
+                { x: 400, y: 100, type: 'fighter', vx: -0.5 },
+                { x: 600, y: 200, type: 'interceptor', vx: 0.8 }
+            ];
+            const bullets = [];
+            
+            function animate() {
+                clearCanvas();
+                time++;
+                
+                // 更新敌机位置
+                enemies.forEach(enemy => {
+                    enemy.x += enemy.vx;
+                    if (enemy.x < 50 || enemy.x > 750) enemy.vx *= -1;
+                });
+                
+                // 生成子弹
+                if (time % 30 === 0) {
+                    bullets.push({
+                        x: player.x,
+                        y: player.y - 30,
+                        vy: -8
+                    });
+                }
+                
+                // 更新子弹
+                for (let i = bullets.length - 1; i >= 0; i--) {
+                    bullets[i].y += bullets[i].vy;
+                    if (bullets[i].y < 0) bullets.splice(i, 1);
+                }
+                
+                // 绘制敌机
+                enemies.forEach(enemy => {
+                    assetManager.drawAsset(ctx, `enemies.${enemy.type}`, enemy.x, enemy.y, 0, 1);
+                });
+                
+                // 绘制子弹
+                bullets.forEach(bullet => {
+                    assetManager.drawAsset(ctx, 'bullets.standard', bullet.x, bullet.y, 0, 1);
+                });
+                
+                // 绘制玩家
+                const wobble = Math.sin(time * 0.1) * 20;
+                assetManager.drawAsset(ctx, `player.${player.type}`, player.x + wobble, player.y, 0, 1);
+                
+                // 显示信息
+                ctx.fillStyle = '#00FF00';
+                ctx.font = '16px Microsoft YaHei';
+                ctx.textAlign = 'left';
+                ctx.fillText('实时战斗演示', 20, 30);
+                
+                animationId = requestAnimationFrame(animate);
+            }
+            
+            animate();
+        }
+        
+        // 初始显示
+        clearCanvas();
+    </script>
+</body>
+</html>

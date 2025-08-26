@@ -58,10 +58,11 @@ class InputManager {
      * @param {KeyboardEvent} event - 键盘事件
      */
     handleKeyDown(event) {
-        // 防止默认行为（如空格滚动页面）
-        if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'NumpadEnter'].includes(event.code)) {
+        // 防止默认行为（如空格滚动页面，Tab切换焦点）
+        if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'NumpadEnter', 'Tab'].includes(event.code)) {
             event.preventDefault();
         }
+        
         
         // 记录按键状态
         if (!this.keys.get(event.code)) {

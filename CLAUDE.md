@@ -8,3 +8,6 @@
 
 ## Audience
 verteran programmer and AI scientists
+
+## 测试说明
+测试的时候用 headless 模式运行，不要打开浏览器干扰用户

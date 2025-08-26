@@ -157,6 +157,13 @@ class Game {
                 if (this.gameLoop.frameCount < 180) { // 前3秒显示提示
                     renderer.drawText('游戏开始！', 320, 200, 32, '#00FF00');
                     renderer.drawText('使用方向键或WASD移动', 320, 240, 20, '#FFFFFF');
+                    renderer.drawText('按1/2/3切换战机', 320, 270, 20, '#FFFFFF');
+                }
+                
+                // 显示切换战机消息
+                if (this.messageTimer && this.messageTimer > 0) {
+                    renderer.drawText(this.showMessage || '', 320, 100, 28, '#FFD700');
+                    this.messageTimer--;
                 }
                 
                 // 绘制粒子效果（底层）
@@ -337,14 +344,27 @@ class Game {
         
         // 数字键切换战机类型
         if (this.inputManager.isKeyPressed('Digit1')) {
-            this.player.aircraftType = 'fighter';
-            console.log('切换到战斗机');
+            if (this.player.aircraftType !== 'fighter') {
+                this.player.aircraftType = 'fighter';
+                console.log('切换到雷电战机');
+                // 视觉反馈
+                this.showMessage = '雷电战机';
+                this.messageTimer = 60; // 显示1秒
+            }
         } else if (this.inputManager.isKeyPressed('Digit2')) {
-            this.player.aircraftType = 'bomber';
-            console.log('切换到轰炸机');
+            if (this.player.aircraftType !== 'bomber') {
+                this.player.aircraftType = 'bomber';
+                console.log('切换到重型轰炸机');
+                this.showMessage = '重型轰炸机';
+                this.messageTimer = 60;
+            }
         } else if (this.inputManager.isKeyPressed('Digit3')) {
-            this.player.aircraftType = 'interceptor';
-            console.log('切换到拦截机');
+            if (this.player.aircraftType !== 'interceptor') {
+                this.player.aircraftType = 'interceptor';
+                console.log('切换到幽灵拦截机');
+                this.showMessage = '幽灵拦截机';
+                this.messageTimer = 60;
+            }
         }
         
         // Tab键切换武器

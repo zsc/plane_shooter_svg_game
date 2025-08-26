@@ -1,3 +1,17 @@
+# Plane Shooter SVG Game - Git Ignore File
+# 
+# Version control strategy:
+# - Commit source code and documentation
+# - Commit ABC music notation files (*.abc)
+# - Commit Python generation scripts
+# - DO NOT commit generated audio files (*.wav, *.ogg, *.mp3)
+# - DO NOT commit node_modules or Python virtual environments
+# 
+# To generate audio files locally:
+#   python3 generate_hq_music.py
+#
+# =====================================
+
 # Node.js
 node_modules/
 npm-debug.log*
@@ -74,3 +88,52 @@ desktop.ini
 # Cache
 .cache/
 .parcel-cache/
+
+# Generated audio files
+audio/*.wav
+audio/*.ogg
+audio/*.mp3
+audio/hq/*.wav
+audio/hq/*.ogg
+audio/hq/*.mp3
+audio/music_data.json
+audio/music_assets.html
+audio/hq/music_list.json
+
+# Music generation temporary files
+*.mid
+*.midi
+*.abc.bak
+generate_music_output.txt
+
+# Python virtual environments
+venv/
+env/
+ENV/
+.venv/
+.ENV/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Generated test files
+test_phase*.js
+test_assets.html
+generate_music.html
+
+# Large binary files
+*.psd
+*.ai
+*.sketch
+*.fig
+
+# Game saves and user data
+saves/
+user_data/
+*.save
+*.sav
+
+# Performance profiling
+*.prof
+*.perf
+chrome_profiling/

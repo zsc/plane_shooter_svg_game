@@ -44,7 +44,7 @@ class Player {
         this.weaponManager = null; // 将在Game.js中初始化
         this.fireRate = 5; // 每秒发射次数
         this.fireCooldown = 0;
-        this.bullets = [];
+        this.bullets = []; // 保留用于兼容性，但不再使用
         
         // 能量系统
         this.maxEnergy = 100;
@@ -66,9 +66,10 @@ class Player {
      * 更新玩家状态
      * @param {number} deltaTime - 时间增量（秒）
      * @param {InputManager} input - 输入管理器
+     * @returns {Array} 新创建的子弹数组（如果有）
      */
     update(deltaTime, input) {
-        if (this.isDead) return;
+        if (this.isDead) return [];
         
         // 处理输入
         this.handleInput(input);
@@ -76,14 +77,17 @@ class Player {
         // 更新移动
         this.updateMovement(deltaTime);
         
-        // 更新武器
-        this.updateWeapon(deltaTime, input);
+        // 更新武器并获取新子弹
+        const newBullets = this.updateWeapon(deltaTime, input);
         
         // 更新无敌时间
         this.updateInvincibility(deltaTime);
         
         // 检查边界
         this.checkBounds();
+        
+        // 返回新创建的子弹
+        return newBullets || [];
     }
 
     /**
@@ -158,7 +162,7 @@ class Player {
             );
             
             // 返回子弹数组供游戏系统处理
-            return bullets;
+            return bullets || [];
         } else {
             // 旧的武器系统（向后兼容）
             // 更新冷却
@@ -175,6 +179,9 @@ class Player {
             // 更新子弹
             this.updateBullets(deltaTime);
         }
+        
+        // 返回空数组（如果使用旧系统）
+        return [];
     }
 
     /**

@@ -45,10 +45,11 @@ class Weapon {
      * @param {Object} position - 发射位置
      * @param {number} currentTime - 当前时间
      * @param {number} direction - 发射方向（弧度）
+     * @param {number} energy - 当前能量（可选）
      * @returns {Array} 生成的子弹数组
      */
-    fire(position, currentTime, direction = -Math.PI/2) {
-        if (!this.canFire(currentTime)) {
+    fire(position, currentTime, direction = -Math.PI/2, energy = 100) {
+        if (!this.canFire(currentTime, energy)) {
             return [];
         }
         
@@ -86,7 +87,8 @@ class Weapon {
             type: this.bulletType,
             delay: delay,
             active: true,
-            lifetime: 3000 // 3秒后自动销毁
+            lifetime: 0,  // 当前生存时间
+            maxLifetime: 3000 // 3秒后自动销毁
         };
     }
     
@@ -295,9 +297,9 @@ class WeaponManager {
         if (!this.activeWeapon) return [];
         
         const energy = this.player ? this.player.energy : 100;
-        if (energy < this.activeWeapon.energyCost) return [];
         
-        const bullets = this.activeWeapon.fire(position, currentTime);
+        // 传递能量给fire方法
+        const bullets = this.activeWeapon.fire(position, currentTime, -Math.PI/2, energy);
         
         if (bullets.length > 0 && this.player) {
             this.player.energy -= this.activeWeapon.energyCost;
@@ -313,9 +315,9 @@ class WeaponManager {
         if (!this.secondaryWeapon) return [];
         
         const energy = this.player ? this.player.energy : 100;
-        if (energy < this.secondaryWeapon.energyCost) return [];
         
-        const bullets = this.secondaryWeapon.fire(position, currentTime);
+        // 传递能量给fire方法
+        const bullets = this.secondaryWeapon.fire(position, currentTime, -Math.PI/2, energy);
         
         if (bullets.length > 0 && this.player) {
             this.player.energy -= this.secondaryWeapon.energyCost;

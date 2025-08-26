@@ -260,11 +260,9 @@ class CollisionSystem {
         playerBullets.forEach(bullet => {
             if (!bullet.active) return;
             
-            // 使用空间分区优化
-            const nearbyEnemies = this.getNearbyObjects(bullet);
-            
-            for (const enemy of nearbyEnemies) {
-                if (!enemy.active || enemy.isDead || enemy.type === 'player') continue;
+            // 直接遍历敌人数组，而不是使用空间分区的所有对象
+            for (const enemy of enemies) {
+                if (!enemy || !enemy.active || enemy.isDead) continue;
                 
                 if (this.checkCircleCollision(bullet, enemy)) {
                     this.handleBulletEnemyCollision(bullet, enemy);

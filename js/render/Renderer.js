@@ -382,6 +382,33 @@ class Renderer {
             12, '#FFFFFF'
         );
         
+        // 能量条（如果有）
+        if (gameData.energy !== undefined) {
+            const energyBarY = healthBarY + 30;
+            
+            // 背景
+            this.drawRectWithBorder(
+                healthBarX, energyBarY,
+                healthBarWidth, healthBarHeight,
+                'rgba(0,0,0,0.5)', '#333', 2
+            );
+            
+            // 能量值
+            if (gameData.energy > 0) {
+                const energyWidth = (gameData.energy / gameData.maxEnergy) * (healthBarWidth - 4);
+                this.ctx.fillStyle = '#00BFFF';
+                this.ctx.fillRect(healthBarX + 2, energyBarY + 2, energyWidth, healthBarHeight - 4);
+            }
+            
+            // 能量文字
+            this.drawText(
+                `能量: ${Math.round(gameData.energy)}/${gameData.maxEnergy}`,
+                healthBarX + healthBarWidth / 2,
+                energyBarY + healthBarHeight / 2,
+                12, '#FFFFFF'
+            );
+        }
+        
         // 分数
         this.drawText(
             `分数: ${gameData.score}`,

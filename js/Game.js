@@ -96,11 +96,10 @@ class Game {
         const playingState = this.stateMachine.states.get(GameConfig.STATES.PLAYING);
         if (playingState) {
             playingState.update = (dt) => {
-                // 更新玩家
-                this.player.update(dt, this.inputManager);
+                // 更新玩家并获取发射的子弹
+                const newBullets = this.player.update(dt, this.inputManager);
                 
-                // 获取玩家发射的子弹
-                const newBullets = this.player.updateWeapon(dt, this.inputManager);
+                // 添加新子弹到子弹系统
                 if (newBullets && newBullets.length > 0) {
                     this.bulletSystem.addBullets(newBullets, false);
                 }
@@ -125,12 +124,15 @@ class Game {
                 // 更新粒子系统
                 this.particleSystem.update(dt);
                 
-                // 添加推进器火焰效果
+                // 添加推进器火焰效果（限制频率）
                 if (this.player.isMoving && !this.player.isDead) {
-                    this.particleSystem.createThrusterFlame(
-                        this.player.x,
-                        this.player.y + this.player.height / 2
-                    );
+                    // 每隔几帧创建一次，避免性能问题
+                    if (this.gameLoop.frameCount % 3 === 0) {
+                        this.particleSystem.createThrusterFlame(
+                            this.player.x,
+                            this.player.y + this.player.height / 2
+                        );
+                    }
                 }
             };
             
@@ -183,14 +185,7 @@ class Game {
                     this.bulletSystem.render(renderer);
                 }
                 
-                // 兼容旧的子弹系统
-                this.player.bullets.forEach(bullet => {
-                    if (this.assetManager && this.assetManager.loaded) {
-                        renderer.drawBullet(bullet, this.assetManager);
-                    } else {
-                        renderer.drawCircle(bullet.x, bullet.y, bullet.size || 3, bullet.color || '#FFD700');
-                    }
-                });
+                // 旧的子弹系统已废弃，不再渲染
                 
                 // 绘制玩家（使用SVG资源）
                 if (!this.player.isDead) {
@@ -204,6 +199,8 @@ class Game {
                 renderer.drawHUD({
                     health: this.player.health,
                     maxHealth: this.player.maxHealth,
+                    energy: this.player.energy,
+                    maxEnergy: this.player.maxEnergy,
                     score: this.player.score,
                     lives: this.player.lives,
                     fps: this.gameLoop.getFPS()

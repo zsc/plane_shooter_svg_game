@@ -454,6 +454,49 @@ class Player {
     }
 
     /**
+     * 更新战机属性基于类型
+     */
+    updateAircraftStats() {
+        switch (this.aircraftType) {
+            case 'fighter':
+                // 战斗机 - 平衡型
+                this.maxSpeed = 500;
+                this.accelerationRate = 800;
+                this.fireRate = 8;
+                this.maxHealth = 100;
+                this.hitBox.width = 20;
+                this.hitBox.height = 20;
+                break;
+            case 'bomber':
+                // 轰炸机 - 高火力，低速
+                this.maxSpeed = 350;
+                this.accelerationRate = 600;
+                this.fireRate = 4;
+                this.maxHealth = 150;
+                this.hitBox.width = 30;
+                this.hitBox.height = 30;
+                this.maxBombs = 5;
+                break;
+            case 'interceptor':
+                // 拦截机 - 高速，低生命
+                this.maxSpeed = 650;
+                this.accelerationRate = 1000;
+                this.fireRate = 10;
+                this.maxHealth = 75;
+                this.hitBox.width = 15;
+                this.hitBox.height = 15;
+                break;
+        }
+        
+        // 如果当前生命值超过新的最大值，调整为最大值
+        if (this.health > this.maxHealth) {
+            this.health = this.maxHealth;
+        }
+        
+        console.log(`战机类型切换为: ${this.aircraftType}, 速度: ${this.maxSpeed}, 火力: ${this.fireRate}, 生命: ${this.maxHealth}`);
+    }
+
+    /**
      * 重置玩家
      */
     reset() {

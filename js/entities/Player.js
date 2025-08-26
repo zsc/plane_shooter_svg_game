@@ -58,6 +58,13 @@ class Player {
         // 战机类型
         this.aircraftType = 'fighter'; // 可选: fighter, bomber, interceptor
         
+        // 道具效果
+        this.speedMultiplier = 1;
+        this.magnetMultiplier = 1;
+        this.scoreMultiplier = 1;
+        this.shieldActive = false;
+        this.shieldTime = 0;
+        
         // 边界
         this.bounds = GameConfig.PLAYER.BOUNDS;
     }
@@ -240,6 +247,14 @@ class Player {
                 this.isInvincible = false;
             }
         }
+        
+        // 更新护盾时间
+        if (this.shieldActive && this.shieldTime > 0) {
+            this.shieldTime -= deltaTime;
+            if (this.shieldTime <= 0) {
+                this.shieldActive = false;
+            }
+        }
     }
 
     /**
@@ -276,7 +291,7 @@ class Player {
      * @param {number} damage - 伤害值
      */
     takeDamage(damage) {
-        if (this.isInvincible || this.isDead) return;
+        if (this.isInvincible || this.isDead || this.shieldActive) return;
         
         this.health -= damage;
         
@@ -332,7 +347,16 @@ class Player {
      * @param {number} points - 分数
      */
     addScore(points) {
-        this.score += points;
+        this.score += points * this.scoreMultiplier;
+    }
+    
+    /**
+     * 激活护盾
+     * @param {number} duration - 持续时间（毫秒）
+     */
+    activateShield(duration) {
+        this.shieldActive = true;
+        this.shieldTime = duration / 1000;
     }
 
     /**

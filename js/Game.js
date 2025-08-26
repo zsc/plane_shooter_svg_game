@@ -21,6 +21,13 @@ class Game {
         this.enemySpawnInterval = 2; // 秒
         this.waveNumber = 0;
         
+        // 关卡系统 (Phase 3)
+        this.levelManager = null;
+        this.waveManager = null;
+        this.bossManager = null;
+        this.powerUpManager = null;
+        this.currentBoss = null;
+        
         // 游戏状态
         this.isInitialized = false;
         this.isRunning = false;
@@ -54,6 +61,24 @@ class Game {
         this.bulletSystem = new BulletSystem();
         this.collisionSystem = new CollisionSystem();
         this.particleSystem = new ParticleSystem();
+        
+        // 初始化关卡系统 (Phase 3)
+        this.levelManager = new LevelManager();
+        this.waveManager = new WaveManager();
+        this.bossManager = new BossManager();
+        this.powerUpManager = new PowerUpManager();
+        
+        // 初始化关卡系统连接
+        this.levelManager.init(this.waveManager, this.bossManager);
+        this.waveManager.init(
+            (enemyData) => this.spawnEnemy(enemyData),
+            () => console.log('波次完成')
+        );
+        this.bossManager.init(
+            (boss) => this.spawnBoss(boss),
+            () => this.levelManager.onBossDefeated()
+        );
+        this.powerUpManager.init();
         
         // 初始化玩家武器
         this.player.weaponManager = new WeaponManager(this.player);
@@ -96,6 +121,14 @@ class Game {
         const playingState = this.stateMachine.states.get(GameConfig.STATES.PLAYING);
         if (playingState) {
             playingState.update = (dt) => {
+                // 更新关卡系统
+                if (this.levelManager && this.levelManager.currentLevel) {
+                    this.levelManager.update(dt);
+                } else {
+                    // 使用旧的生成系统作为后备
+                    this.spawnEnemies(dt);
+                }
+                
                 // 更新玩家并获取发射的子弹
                 const newBullets = this.player.update(dt, this.inputManager);
                 
@@ -107,19 +140,34 @@ class Game {
                 // 更新敌人
                 this.updateEnemies(dt);
                 
-                // 生成敌人
-                this.spawnEnemies(dt);
+                // 更新Boss
+                if (this.currentBoss && this.currentBoss.active) {
+                    const bossBullets = this.currentBoss.update(dt, this.player);
+                    if (bossBullets && bossBullets.length > 0) {
+                        this.bulletSystem.addBullets(bossBullets, true);
+                    }
+                }
                 
                 // 更新子弹系统
                 this.bulletSystem.update(dt, this.enemies);
                 
+                // 更新道具系统
+                this.powerUpManager.update(dt, this.player);
+                
                 // 碰撞检测
-                this.collisionSystem.processCollisions({
+                const collisionData = {
                     player: this.player,
                     enemies: this.enemies,
                     bulletSystem: this.bulletSystem,
-                    powerups: []
-                });
+                    powerups: this.powerUpManager.powerUps
+                };
+                
+                // 添加Boss到碰撞检测
+                if (this.currentBoss && this.currentBoss.active) {
+                    collisionData.boss = this.currentBoss;
+                }
+                
+                this.collisionSystem.processCollisions(collisionData);
                 
                 // 更新粒子系统
                 this.particleSystem.update(dt);
@@ -144,8 +192,15 @@ class Game {
                 this.enemies = [];
                 this.bulletSystem.clear();
                 this.particleSystem.clear();
+                this.powerUpManager.clearAll();
                 this.waveNumber = 0;
                 this.enemySpawnTimer = 0;
+                this.currentBoss = null;
+                
+                // 加载第一关
+                if (this.levelManager) {
+                    this.levelManager.loadLevel(0);
+                }
             };
             
             playingState.render = (renderer) => {
@@ -194,6 +249,20 @@ class Game {
                 
                 // 旧的子弹系统已废弃，不再渲染
                 
+                // 绘制道具
+                if (this.powerUpManager) {
+                    this.powerUpManager.render(renderer);
+                }
+                
+                // 绘制Boss
+                if (this.currentBoss && this.currentBoss.active) {
+                    this.currentBoss.render(renderer);
+                    // 绘制Boss血条
+                    if (this.bossManager) {
+                        this.bossManager.renderBossUI(renderer, this.currentBoss);
+                    }
+                }
+                
                 // 绘制玩家（使用SVG资源）
                 if (!this.player.isDead) {
                     // 无敌时闪烁效果
@@ -212,6 +281,15 @@ class Game {
                     lives: this.player.lives,
                     fps: this.gameLoop.getFPS()
                 });
+                
+                // 绘制关卡信息
+                if (this.levelManager && this.levelManager.getCurrentLevelInfo()) {
+                    const levelInfo = this.levelManager.getCurrentLevelInfo();
+                    renderer.drawText(
+                        `${levelInfo.name} - 波次 ${levelInfo.wave}/${levelInfo.totalWaves}`,
+                        320, 50, 16, '#FFFFFF'
+                    );
+                }
                 
                 // 游戏结束检查
                 if (this.player.isDead && this.player.lives <= 0) {
@@ -475,10 +553,19 @@ class Game {
             const enemy = this.enemies[i];
             
             if (!enemy.active) {
-                // 敌人死亡时创建爆炸效果
+                // 敌人死亡时创建爆炸效果和掉落道具
                 if (enemy.isDead) {
                     this.particleSystem.createExplosion(enemy.x, enemy.y);
                     this.player.addScore(enemy.scoreValue);
+                    
+                    // 根据敌人类型决定掉落表
+                    const dropTable = enemy.isElite ? 'elite' : 'normal';
+                    this.powerUpManager.spawnPowerUp(enemy.x, enemy.y, dropTable);
+                    
+                    // 更新关卡统计
+                    if (this.levelManager) {
+                        this.levelManager.levelStats.enemiesKilled++;
+                    }
                 }
                 
                 this.enemies.splice(i, 1);
@@ -496,6 +583,84 @@ class Game {
         
         // 处理子弹与敌人的碰撞效果
         this.handleBulletCollisions();
+    }
+    
+    /**
+     * 从波次管理器生成敌人
+     * @param {Object} enemyData - 敌人数据
+     */
+    spawnEnemy(enemyData) {
+        const enemy = EnemyFactory.createEnemy(
+            enemyData.type,
+            enemyData.x,
+            enemyData.y,
+            enemyData
+        );
+        
+        if (enemy) {
+            // 应用额外属性
+            if (enemyData.vx) enemy.vx = enemyData.vx;
+            if (enemyData.vy) enemy.vy = enemyData.vy;
+            if (enemyData.behavior) enemy.behavior = enemyData.behavior;
+            if (enemyData.health) enemy.maxHealth = enemy.health = enemyData.health;
+            if (enemyData.damage) enemy.damage = enemyData.damage;
+            if (enemyData.score) enemy.scoreValue = enemyData.score;
+            
+            this.enemies.push(enemy);
+        }
+    }
+    
+    /**
+     * 生成Boss
+     * @param {Object} bossData - Boss数据
+     */
+    spawnBoss(bossData) {
+        console.log(`生成Boss: ${bossData.type}`);
+        
+        // 清除所有普通敌机
+        this.enemies = [];
+        
+        // 创建Boss实例
+        this.currentBoss = this.bossManager.createBossFromTemplate(bossData.type);
+        
+        if (this.currentBoss) {
+            // 应用关卡特定的Boss属性
+            if (bossData.health) this.currentBoss.maxHealth = this.currentBoss.currentHealth = bossData.health;
+            if (bossData.phases) this.currentBoss.totalPhases = bossData.phases;
+            
+            // Boss入场
+            this.currentBoss.enter();
+        }
+    }
+    
+    /**
+     * 触发全屏炸弹效果
+     */
+    triggerBomb() {
+        console.log('全屏炸弹触发！');
+        
+        // 清除所有敌机
+        this.enemies.forEach(enemy => {
+            enemy.takeDamage(9999);
+            this.particleSystem.createExplosion(enemy.x, enemy.y);
+        });
+        
+        // 清除所有敌人子弹
+        this.bulletSystem.enemyBullets.forEach(bullet => {
+            bullet.active = false;
+        });
+        
+        // 对Boss造成伤害
+        if (this.currentBoss && this.currentBoss.active) {
+            this.currentBoss.takeDamage(500);
+        }
+        
+        // 创建全屏特效
+        for (let i = 0; i < 10; i++) {
+            const x = Math.random() * GameConfig.CANVAS.WIDTH;
+            const y = Math.random() * GameConfig.CANVAS.HEIGHT;
+            this.particleSystem.createExplosion(x, y);
+        }
     }
     
     /**

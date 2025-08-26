@@ -85,18 +85,6 @@ class AssetManager {
                     width: 48,
                     height: 48
                 },
-                bomber: {
-                    svg: `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="45" y="20" width="30" height="60" rx="5" fill="#4CAF50" stroke="#1B5E20" stroke-width="2"/>
-                        <path d="M45,35 L25,50 L25,70 L45,60 Z" fill="#66BB6A" stroke="#2E7D32" stroke-width="1.5"/>
-                        <path d="M75,35 L95,50 L95,70 L75,60 Z" fill="#66BB6A" stroke="#2E7D32" stroke-width="1.5"/>
-                        <circle cx="52" cy="75" r="4" fill="#FF5722"/>
-                        <circle cx="60" cy="75" r="4" fill="#FF5722"/>
-                        <circle cx="68" cy="75" r="4" fill="#FF5722"/>
-                    </svg>`,
-                    width: 48,
-                    height: 48
-                },
                 interceptor: {
                     svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                         <path d="M50,70 L44,40 L44,25 L50,10 L56,25 L56,40 Z" 

@@ -73,7 +73,7 @@ class LevelManager {
                         startTime: 18,
                         duration: 30,
                         type: 'main',
-                        enemyTypes: ['scout', 'drone'],
+                        enemyTypes: ['scout', 'fighter'],
                         formation: 'v_formation',
                         spawnRate: 3,
                         difficulty: 1.2
@@ -82,7 +82,7 @@ class LevelManager {
                         startTime: 48,
                         duration: 20,
                         type: 'intense',
-                        enemyTypes: ['fighter', 'bomber'],
+                        enemyTypes: ['fighter', 'interceptor'],
                         formation: 'surround',
                         spawnRate: 4,
                         difficulty: 1.5
@@ -115,7 +115,7 @@ class LevelManager {
                         startTime: 3,
                         duration: 20,
                         type: 'warmup',
-                        enemyTypes: ['scout', 'seaplane'],
+                        enemyTypes: ['scout', 'fighter'],
                         formation: 'wave',
                         spawnRate: 3,
                         difficulty: 1.2
@@ -124,7 +124,7 @@ class LevelManager {
                         startTime: 23,
                         duration: 40,
                         type: 'main',
-                        enemyTypes: ['fighter', 'destroyer'],
+                        enemyTypes: ['fighter', 'interceptor'],
                         formation: 'mixed',
                         spawnRate: 4,
                         difficulty: 1.5
@@ -133,7 +133,7 @@ class LevelManager {
                         startTime: 63,
                         duration: 30,
                         type: 'intense',
-                        enemyTypes: ['heavy', 'submarine'],
+                        enemyTypes: ['interceptor', 'stealth'],
                         formation: 'pincer',
                         spawnRate: 5,
                         difficulty: 2.0
@@ -166,7 +166,7 @@ class LevelManager {
                         startTime: 3,
                         duration: 25,
                         type: 'warmup',
-                        enemyTypes: ['drone', 'interceptor'],
+                        enemyTypes: ['fighter', 'interceptor'],
                         formation: 'spiral',
                         spawnRate: 4,
                         difficulty: 1.5
@@ -175,7 +175,7 @@ class LevelManager {
                         startTime: 28,
                         duration: 50,
                         type: 'main',
-                        enemyTypes: ['fighter', 'carrier', 'elite'],
+                        enemyTypes: ['interceptor', 'stealth', 'commander'],
                         formation: 'complex',
                         spawnRate: 5,
                         difficulty: 2.0
@@ -184,7 +184,7 @@ class LevelManager {
                         startTime: 78,
                         duration: 40,
                         type: 'intense',
-                        enemyTypes: ['elite', 'fortress', 'destroyer'],
+                        enemyTypes: ['stealth', 'commander', 'interceptor'],
                         formation: 'chaos',
                         spawnRate: 6,
                         difficulty: 2.5

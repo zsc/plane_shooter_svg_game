@@ -251,17 +251,10 @@ class WaveManager {
     calculateEnemyHealth(type) {
         const baseHealth = {
             scout: 20,
-            drone: 30,
             fighter: 50,
-            bomber: 80,
-            heavy: 100,
-            elite: 150,
-            fortress: 200,
-            carrier: 300,
-            destroyer: 250,
-            submarine: 180,
-            seaplane: 60,
-            interceptor: 70
+            interceptor: 70,
+            stealth: 60,
+            commander: 150
         };
         
         const health = baseHealth[type] || 50;
@@ -276,17 +269,10 @@ class WaveManager {
     calculateEnemyDamage(type) {
         const baseDamage = {
             scout: 5,
-            drone: 8,
             fighter: 10,
-            bomber: 15,
-            heavy: 20,
-            elite: 25,
-            fortress: 30,
-            carrier: 35,
-            destroyer: 40,
-            submarine: 25,
-            seaplane: 12,
-            interceptor: 15
+            interceptor: 15,
+            stealth: 12,
+            commander: 25
         };
         
         const damage = baseDamage[type] || 10;
@@ -301,17 +287,10 @@ class WaveManager {
     calculateEnemyScore(type) {
         const baseScore = {
             scout: 100,
-            drone: 150,
             fighter: 200,
-            bomber: 300,
-            heavy: 400,
-            elite: 500,
-            fortress: 800,
-            carrier: 1000,
-            destroyer: 900,
-            submarine: 600,
-            seaplane: 250,
-            interceptor: 350
+            interceptor: 350,
+            stealth: 400,
+            commander: 500
         };
         
         return baseScore[type] || 100;

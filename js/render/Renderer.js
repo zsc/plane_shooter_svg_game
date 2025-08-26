@@ -173,39 +173,56 @@ class Renderer {
     }
 
     /**
-     * 绘制玩家飞机（简单三角形）
+     * 绘制玩家飞机
      * @param {Object} player - 玩家对象
+     * @param {AssetManager} assetManager - 资源管理器（可选）
      */
-    drawPlayer(player) {
+    drawPlayer(player, assetManager = null) {
         this.ctx.save();
-        this.ctx.translate(player.x, player.y);
         
-        // 绘制机身（三角形）
-        this.ctx.fillStyle = '#4A90E2';
-        this.ctx.strokeStyle = '#2E5C8A';
-        this.ctx.lineWidth = 2;
-        
-        this.ctx.beginPath();
-        this.ctx.moveTo(0, -30);
-        this.ctx.lineTo(-20, 20);
-        this.ctx.lineTo(0, 10);
-        this.ctx.lineTo(20, 20);
-        this.ctx.closePath();
-        this.ctx.fill();
-        this.ctx.stroke();
-        
-        // 绘制引擎火焰
-        if (player.isMoving) {
-            this.ctx.fillStyle = '#FFA500';
-            this.ctx.globalAlpha = 0.8;
+        // 如果有资源管理器且已加载，使用SVG资源
+        if (assetManager && assetManager.loaded) {
+            // 根据玩家类型选择战机素材
+            const playerType = player.aircraftType || 'fighter';
+            assetManager.drawAsset(
+                this.ctx, 
+                `player.${playerType}`, 
+                player.x, 
+                player.y,
+                0, // 旋转角度
+                1  // 缩放
+            );
+        } else {
+            // 降级方案：绘制简单的三角形
+            this.ctx.translate(player.x, player.y);
+            
+            // 绘制机身（三角形）
+            this.ctx.fillStyle = '#4A90E2';
+            this.ctx.strokeStyle = '#2E5C8A';
+            this.ctx.lineWidth = 2;
+            
             this.ctx.beginPath();
-            this.ctx.moveTo(-8, 20);
-            this.ctx.lineTo(-4, 35);
-            this.ctx.lineTo(0, 30);
-            this.ctx.lineTo(4, 35);
-            this.ctx.lineTo(8, 20);
+            this.ctx.moveTo(0, -30);
+            this.ctx.lineTo(-20, 20);
+            this.ctx.lineTo(0, 10);
+            this.ctx.lineTo(20, 20);
             this.ctx.closePath();
             this.ctx.fill();
+            this.ctx.stroke();
+            
+            // 绘制引擎火焰
+            if (player.isMoving) {
+                this.ctx.fillStyle = '#FFA500';
+                this.ctx.globalAlpha = 0.8;
+                this.ctx.beginPath();
+                this.ctx.moveTo(-8, 20);
+                this.ctx.lineTo(-4, 35);
+                this.ctx.lineTo(0, 30);
+                this.ctx.lineTo(4, 35);
+                this.ctx.lineTo(8, 20);
+                this.ctx.closePath();
+                this.ctx.fill();
+            }
         }
         
         // 绘制碰撞箱（调试模式）
@@ -213,12 +230,119 @@ class Renderer {
             this.ctx.globalAlpha = 0.3;
             this.ctx.strokeStyle = '#00FF00';
             this.ctx.lineWidth = 1;
-            this.ctx.strokeRect(
-                -player.hitBox.width / 2, 
-                -player.hitBox.height / 2,
-                player.hitBox.width, 
-                player.hitBox.height
+            const hitboxRadius = player.hitboxRadius || 16;
+            this.ctx.beginPath();
+            this.ctx.arc(player.x, player.y, hitboxRadius, 0, Math.PI * 2);
+            this.ctx.stroke();
+        }
+        
+        this.ctx.restore();
+        this.drawCalls++;
+    }
+    
+    /**
+     * 绘制敌机
+     * @param {Enemy} enemy - 敌机对象
+     * @param {AssetManager} assetManager - 资源管理器（可选）
+     */
+    drawEnemy(enemy, assetManager = null) {
+        if (!enemy.active || enemy.isDead) return;
+        
+        this.ctx.save();
+        
+        // 闪烁效果
+        if (enemy.flashTime > 0 && Math.floor(enemy.flashTime * 20) % 2 === 0) {
+            this.ctx.globalAlpha = 0.5;
+        }
+        
+        // 如果有资源管理器且已加载，使用SVG资源
+        if (assetManager && assetManager.loaded) {
+            const enemyType = enemy.type || 'scout';
+            assetManager.drawAsset(
+                this.ctx,
+                `enemies.${enemyType}`,
+                enemy.x,
+                enemy.y,
+                0, // 旋转角度
+                1  // 缩放
             );
+        } else {
+            // 降级方案：使用原始绘制方法
+            enemy.render(this);
+        }
+        
+        this.ctx.restore();
+        
+        // 显示血条
+        if (enemy.health < enemy.maxHealth) {
+            this.drawEnemyHealthBar(enemy);
+        }
+        
+        this.drawCalls++;
+    }
+    
+    /**
+     * 绘制敌机血条
+     */
+    drawEnemyHealthBar(enemy) {
+        const barWidth = enemy.width || 32;
+        const barHeight = 4;
+        const barY = enemy.y - (enemy.height || 32) / 2 - 10;
+        
+        // 背景
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        this.ctx.fillRect(
+            enemy.x - barWidth / 2,
+            barY,
+            barWidth,
+            barHeight
+        );
+        
+        // 血条
+        const healthPercent = enemy.health / enemy.maxHealth;
+        const healthColor = healthPercent > 0.5 ? '#00FF00' : 
+                          healthPercent > 0.25 ? '#FFFF00' : '#FF0000';
+        
+        this.ctx.fillStyle = healthColor;
+        this.ctx.fillRect(
+            enemy.x - barWidth / 2,
+            barY,
+            barWidth * healthPercent,
+            barHeight
+        );
+    }
+    
+    /**
+     * 绘制子弹
+     * @param {Bullet} bullet - 子弹对象
+     * @param {AssetManager} assetManager - 资源管理器（可选）
+     */
+    drawBullet(bullet, assetManager = null) {
+        if (!bullet.active) return;
+        
+        this.ctx.save();
+        
+        // 如果有资源管理器且已加载，使用SVG资源
+        if (assetManager && assetManager.loaded) {
+            let bulletType = 'standard';
+            if (bullet.type === 'laser') bulletType = 'laser';
+            else if (bullet.type === 'missile') bulletType = 'missile';
+            else if (bullet.type === 'enemy') bulletType = 'enemyBullet';
+            
+            // 计算子弹旋转角度
+            const rotation = Math.atan2(bullet.vy || 0, bullet.vx || 0) + Math.PI / 2;
+            
+            assetManager.drawAsset(
+                this.ctx,
+                `bullets.${bulletType}`,
+                bullet.x,
+                bullet.y,
+                rotation,
+                1
+            );
+        } else {
+            // 降级方案：简单圆形
+            this.drawCircle(bullet.x, bullet.y, bullet.size || 3, bullet.color || '#FFD700');
         }
         
         this.ctx.restore();

@@ -100,6 +100,7 @@ try {
     loadGameFile('js/core/GameConfig.js');
     loadGameFile('js/core/GameLoop.js');
     loadGameFile('js/core/StateMachine.js');
+    loadGameFile('js/assets/AssetManager.js');
     loadGameFile('js/render/Renderer.js');
     loadGameFile('js/input/InputManager.js');
     loadGameFile('js/entities/Player.js');

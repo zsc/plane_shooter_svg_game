@@ -148,7 +148,30 @@ class StateMachine {
             },
             render: (renderer) => {
                 renderer.clear();
-                renderer.drawText('加载中...', 320, 480, 32, '#FFFFFF');
+                
+                // 绘制加载背景
+                const gradient = renderer.ctx.createLinearGradient(0, 0, 0, GameConfig.CANVAS.HEIGHT);
+                gradient.addColorStop(0, '#001a33');
+                gradient.addColorStop(1, '#003366');
+                renderer.ctx.fillStyle = gradient;
+                renderer.ctx.fillRect(0, 0, GameConfig.CANVAS.WIDTH, GameConfig.CANVAS.HEIGHT);
+                
+                // 加载文字
+                renderer.drawText('正在加载游戏资源...', 320, 400, 32, '#FFFFFF');
+                
+                // 加载动画（旋转的圆圈）
+                const time = Date.now() / 1000;
+                renderer.ctx.save();
+                renderer.ctx.translate(320, 480);
+                renderer.ctx.rotate(time * 2);
+                renderer.ctx.strokeStyle = '#FFD700';
+                renderer.ctx.lineWidth = 3;
+                renderer.ctx.beginPath();
+                renderer.ctx.arc(0, 0, 20, 0, Math.PI * 1.5);
+                renderer.ctx.stroke();
+                renderer.ctx.restore();
+                
+                renderer.drawText('请稍候', 320, 530, 20, '#888888');
             },
             exit: () => {
                 console.log('加载完成');

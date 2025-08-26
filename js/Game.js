@@ -10,6 +10,7 @@ class Game {
         this.stateMachine = null;
         this.inputManager = null;
         this.player = null;
+        this.assetManager = null;
         
         // 战斗系统
         this.bulletSystem = null;
@@ -47,6 +48,7 @@ class Game {
         this.stateMachine = new StateMachine();
         this.inputManager = new InputManager();
         this.player = new Player();
+        this.assetManager = new AssetManager();
         
         // 初始化战斗系统
         this.bulletSystem = new BulletSystem();
@@ -57,6 +59,16 @@ class Game {
         this.player.weaponManager = new WeaponManager(this.player);
         this.player.weaponManager.addWeapon('laser', new LaserCannon(1));
         this.player.weaponManager.addWeapon('missile', new MissileLauncher(1));
+        
+        // 设置玩家战机类型
+        this.player.aircraftType = 'fighter'; // 可以是 'fighter', 'bomber', 或 'interceptor'
+        
+        // 异步加载资源
+        this.assetManager.init().then(() => {
+            console.log('游戏资源加载完成');
+        }).catch(error => {
+            console.error('资源加载失败:', error);
+        });
         
         // 设置游戏循环回调
         this.gameLoop.init(
@@ -148,24 +160,43 @@ class Game {
                 // 绘制粒子效果（底层）
                 this.particleSystem.render(renderer);
                 
-                // 绘制敌人
+                // 绘制敌人（使用SVG资源）
                 this.enemies.forEach(enemy => {
-                    enemy.render(renderer);
+                    if (this.assetManager && this.assetManager.loaded) {
+                        renderer.drawEnemy(enemy, this.assetManager);
+                    } else {
+                        enemy.render(renderer);
+                    }
                 });
                 
-                // 绘制子弹
-                this.bulletSystem.render(renderer);
+                // 绘制子弹（使用SVG资源）
+                if (this.assetManager && this.assetManager.loaded) {
+                    // 绘制玩家子弹
+                    this.bulletSystem.bullets.forEach(bullet => {
+                        renderer.drawBullet(bullet, this.assetManager);
+                    });
+                    // 绘制敌人子弹
+                    this.bulletSystem.enemyBullets.forEach(bullet => {
+                        renderer.drawBullet(bullet, this.assetManager);
+                    });
+                } else {
+                    this.bulletSystem.render(renderer);
+                }
                 
                 // 兼容旧的子弹系统
                 this.player.bullets.forEach(bullet => {
-                    renderer.drawCircle(bullet.x, bullet.y, bullet.size || 3, bullet.color || '#FFD700');
+                    if (this.assetManager && this.assetManager.loaded) {
+                        renderer.drawBullet(bullet, this.assetManager);
+                    } else {
+                        renderer.drawCircle(bullet.x, bullet.y, bullet.size || 3, bullet.color || '#FFD700');
+                    }
                 });
                 
-                // 绘制玩家
+                // 绘制玩家（使用SVG资源）
                 if (!this.player.isDead) {
                     // 无敌时闪烁效果
                     if (!this.player.isInvincible || Math.floor(Date.now() / 100) % 2 === 0) {
-                        renderer.drawPlayer(this.player);
+                        renderer.drawPlayer(this.player, this.assetManager);
                     }
                 }
                 
@@ -304,6 +335,26 @@ class Game {
             const debugDiv = document.getElementById('debugInfo');
             if (debugDiv) {
                 debugDiv.classList.toggle('show', this.debugMode);
+            }
+        }
+        
+        // 数字键切换战机类型
+        if (this.inputManager.isKeyPressed('Digit1')) {
+            this.player.aircraftType = 'fighter';
+            console.log('切换到战斗机');
+        } else if (this.inputManager.isKeyPressed('Digit2')) {
+            this.player.aircraftType = 'bomber';
+            console.log('切换到轰炸机');
+        } else if (this.inputManager.isKeyPressed('Digit3')) {
+            this.player.aircraftType = 'interceptor';
+            console.log('切换到拦截机');
+        }
+        
+        // Tab键切换武器
+        if (this.inputManager.isKeyPressed('Tab')) {
+            if (this.player.weaponManager) {
+                this.player.weaponManager.switchWeapon();
+                console.log('切换武器');
             }
         }
     }

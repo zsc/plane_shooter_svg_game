@@ -55,6 +55,9 @@ class Player {
         this.hitboxRadius = 16;
         this.active = true;
         
+        // 战机类型
+        this.aircraftType = 'fighter'; // 可选: fighter, bomber, interceptor
+        
         // 边界
         this.bounds = GameConfig.PLAYER.BOUNDS;
     }

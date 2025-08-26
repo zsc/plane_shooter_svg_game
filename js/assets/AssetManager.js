@@ -354,6 +354,9 @@ class AssetManager {
                     height: data.height,
                     url: url
                 });
+                if (key.startsWith('bosses.')) {
+                    console.log(`Boss资源加载成功: ${key}, 图像尺寸: ${img.width}x${img.height}`);
+                }
                 resolve();
             };
             
@@ -390,18 +393,53 @@ class AssetManager {
             return;
         }
         
+        // 只为Boss资源打印日志
+        if (key.startsWith('bosses.')) {
+            console.log(`绘制Boss资源: ${key} at (${x}, ${y}), 尺寸: ${asset.width}x${asset.height}`);
+            console.log(`图像实际尺寸: ${asset.image.width}x${asset.image.height}, 完成: ${asset.image.complete}`);
+            
+            // 绘制一个红色矩形来标记Boss位置
+            ctx.save();
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x - asset.width/2, y - asset.height/2, asset.width, asset.height);
+            ctx.restore();
+        }
+        
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(rotation);
         ctx.scale(scale, scale);
         
-        ctx.drawImage(
-            asset.image,
-            -asset.width / 2,
-            -asset.height / 2,
-            asset.width,
-            asset.height
-        );
+        try {
+            // 检查图像是否有效
+            if (key.startsWith('bosses.') && (!asset.image.width || !asset.image.height)) {
+                console.error(`Boss图像尺寸无效: ${key}, width=${asset.image.width}, height=${asset.image.height}`);
+                // 绘制替代图形
+                ctx.fillStyle = 'purple';
+                ctx.fillRect(-asset.width / 2, -asset.height / 2, asset.width, asset.height);
+                ctx.fillStyle = 'white';
+                ctx.font = '20px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('BOSS', 0, 0);
+            } else {
+                ctx.drawImage(
+                    asset.image,
+                    -asset.width / 2,
+                    -asset.height / 2,
+                    asset.width,
+                    asset.height
+                );
+                if (key.startsWith('bosses.')) {
+                    console.log(`成功绘制Boss图像: ${key}`);
+                }
+            }
+        } catch (error) {
+            console.error(`绘制资源失败: ${key}`, error);
+            // 绘制错误替代图形
+            ctx.fillStyle = 'red';
+            ctx.fillRect(-asset.width / 2, -asset.height / 2, asset.width, asset.height);
+        }
         
         ctx.restore();
     }

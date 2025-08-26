@@ -273,20 +273,25 @@ class Game {
                 }
                 
                 // 绘制Boss
-                if (this.currentBoss && this.currentBoss.active) {
-                    this.currentBoss.render(renderer, this.assetManager);
-                    // 绘制Boss血条
-                    if (this.bossManager) {
-                        // 获取Boss状态并传递给UI渲染
-                        const bossStatus = this.currentBoss.getStatus ? this.currentBoss.getStatus() : {
-                            name: this.currentBoss.name || 'Boss',
-                            currentPhase: this.currentBoss.currentPhase || 0,
-                            totalPhases: this.currentBoss.phases ? this.currentBoss.phases.length : 3,
-                            accuracy: 0,
-                            battleTime: Date.now() - (this.bossManager.battleStartTime || Date.now())
-                        };
-                        this.bossManager.renderBossUI(renderer, bossStatus);
+                if (this.currentBoss) {
+                    console.log(`Game渲染Boss - 存在: ${!!this.currentBoss}, 活跃: ${this.currentBoss.active}, 位置: (${this.currentBoss.x}, ${this.currentBoss.y})`);
+                    if (this.currentBoss.active) {
+                        this.currentBoss.render(renderer, this.assetManager);
+                        // 绘制Boss血条
+                        if (this.bossManager) {
+                            // 获取Boss状态并传递给UI渲染
+                            const bossStatus = this.currentBoss.getStatus ? this.currentBoss.getStatus() : {
+                                name: this.currentBoss.name || 'Boss',
+                                currentPhase: this.currentBoss.currentPhase || 0,
+                                totalPhases: this.currentBoss.phases ? this.currentBoss.phases.length : 3,
+                                accuracy: 0,
+                                battleTime: Date.now() - (this.bossManager.battleStartTime || Date.now())
+                            };
+                            this.bossManager.renderBossUI(renderer, bossStatus);
+                        }
                     }
+                } else {
+                    console.log('Game渲染 - 没有currentBoss');
                 }
                 
                 // 绘制玩家（使用SVG资源）

@@ -184,6 +184,20 @@
             color: #FFD700;
             font-weight: bold;
         }
+        
+        /* Boss按钮样式 */
+        #bossButton:hover {
+            transform: translate(-50%, -50%) scale(1.05);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.6);
+        }
+        
+        #bossButton:active {
+            transform: translate(-50%, -50%) scale(0.95);
+        }
+        
+        #bossButton.hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -192,6 +206,25 @@
     
     <!-- 开始按钮 -->
     <button id="startButton">开始游戏</button>
+    
+    <!-- Boss测试按钮 -->
+    <button id="bossButton" style="
+        position: absolute;
+        top: 60%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 15px 40px;
+        font-size: 18px;
+        font-weight: bold;
+        color: #FF6B6B;
+        background: linear-gradient(135deg, #FF6B6B 0%, #C44569 100%);
+        border: 2px solid #FFD700;
+        border-radius: 8px;
+        cursor: pointer;
+        box-shadow: 0 3px 10px rgba(255, 107, 107, 0.4);
+        transition: all 0.3s ease;
+        z-index: 100;
+    ">直接Boss战</button>
     
     <!-- 暂停按钮（游戏中显示） -->
     <button id="pauseButton" class="hidden" style="
@@ -270,6 +303,7 @@
             
             // 获取元素
             const startButton = document.getElementById('startButton');
+            const bossButton = document.getElementById('bossButton');
             const pauseButton = document.getElementById('pauseButton');
             const controls = document.getElementById('controls');
             
@@ -277,6 +311,7 @@
             startButton.addEventListener('click', () => {
                 // 隐藏按钮和提示
                 startButton.classList.add('hidden');
+                bossButton.classList.add('hidden');
                 controls.classList.add('hidden');
                 
                 // 根据当前文字决定行为
@@ -288,6 +323,34 @@
                     // 切换到游戏状态
                     game.stateMachine.changeState(GameConfig.STATES.PLAYING);
                 }
+                
+                // 聚焦画布以接收键盘输入
+                document.getElementById('gameCanvas').focus();
+            });
+            
+            // Boss按钮点击事件
+            bossButton.addEventListener('click', () => {
+                // 隐藏按钮和提示
+                startButton.classList.add('hidden');
+                bossButton.classList.add('hidden');
+                controls.classList.add('hidden');
+                
+                // 切换到游戏状态
+                game.stateMachine.changeState(GameConfig.STATES.PLAYING);
+                
+                // 立即触发Boss战
+                setTimeout(() => {
+                    if (game.bossManager) {
+                        // 清除当前敌人
+                        if (game.enemies) {
+                            game.enemies.length = 0;
+                        }
+                        
+                        // 直接生成第一个Boss
+                        game.bossManager.forceBossSpawn('bomber_commander');
+                        console.log('测试Boss战开始！');
+                    }
+                }, 100);
                 
                 // 聚焦画布以接收键盘输入
                 document.getElementById('gameCanvas').focus();
@@ -311,10 +374,12 @@
                 if (newState === GameConfig.STATES.MENU) {
                     startButton.textContent = '开始游戏';
                     startButton.classList.remove('hidden');
+                    bossButton.classList.remove('hidden');
                     controls.classList.remove('hidden');
                     pauseButton.classList.add('hidden');
                 } else if (newState === GameConfig.STATES.PLAYING) {
                     startButton.classList.add('hidden');
+                    bossButton.classList.add('hidden');
                     controls.classList.add('hidden');
                     pauseButton.classList.remove('hidden');
                     pauseButton.textContent = '暂停';
@@ -324,6 +389,7 @@
                     // 游戏结束时显示重新开始按钮
                     startButton.textContent = '重新开始';
                     startButton.classList.remove('hidden');
+                    bossButton.classList.remove('hidden');
                     pauseButton.classList.add('hidden');
                 }
             });

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Boss渲染调试</title>
+    <style>
+        body { background: #000; color: #0f0; font-family: monospace; padding: 20px; }
+        canvas { border: 2px solid #0f0; display: block; margin: 20px auto; }
+        #debug { white-space: pre-wrap; background: #001; border: 1px solid #0f0; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Boss渲染调试测试</h1>
+    <canvas id="debugCanvas" width="800" height="600"></canvas>
+    <div id="debug">等待测试...</div>
+    
+    <script src="js/core/GameConfig.js"></script>
+    <script src="js/assets/AssetManager.js"></script>
+    <script src="js/render/Renderer.js"></script>
+    <script src="js/boss/Boss.js"></script>
+    
+    <script>
+        const canvas = document.getElementById('debugCanvas');
+        const ctx = canvas.getContext('2d');
+        const debugDiv = document.getElementById('debug');
+        
+        function debug(msg) {
+            console.log(msg);
+            debugDiv.textContent += new Date().toLocaleTimeString() + ': ' + msg + '\n';
+            debugDiv.scrollTop = debugDiv.scrollHeight;
+        }
+        
+        debug('初始化测试环境...');
+        
+        // 初始化系统
+        const renderer = new Renderer(canvas);
+        const assetManager = new AssetManager();
+        
+        debug('创建Boss实例...');
+        
+        // 创建轰炸机指挥官Boss
+        const bossConfig = {
+            id: "bomber_commander",
+            name: "轰炸机指挥官",
+            type: "air",
+            level: 1,
+            x: 400,
+            y: 150,
+            width: 160,
+            height: 120,
+            maxHealth: 3000
+        };
+        
+        const boss = new Boss(bossConfig);
+        debug(`Boss创建成功: ${boss.name} (${boss.id})`);
+        
+        // 初始化资源管理器
+        assetManager.init().then(() => {
+            debug('资源管理器初始化完成');
+            debug(`资源已加载: ${assetManager.loaded}`);
+            debug(`Boss资源键: bosses.${boss.id}`);
+            debug(`资源是否存在: ${assetManager.hasAsset('bosses.' + boss.id)}`);
+            
+            // 列出所有可用的boss资源
+            debug('\n可用的boss资源:');
+            ['bomber_commander', 'iron_battleship', 'sky_fortress'].forEach(id => {
+                const key = `bosses.${id}`;
+                debug(`- ${key}: ${assetManager.hasAsset(key) ? '✓' : '✗'}`);
+            });
+            
+            // 开始渲染循环
+            debug('\n开始渲染测试...');
+            renderLoop();
+        }).catch(error => {
+            debug(`资源加载失败: ${error.message}`);
+        });
+        
+        function renderLoop() {
+            // 清屏
+            renderer.clear();
+            
+            // 更新Boss
+            boss.update(0.016, null, null);
+            
+            // 渲染Boss
+            try {
+                debug(`渲染Boss - 位置: (${boss.x}, ${boss.y}), 活跃: ${boss.active}`);
+                boss.render(renderer, assetManager);
+                debug('Boss渲染成功');
+            } catch (error) {
+                debug(`Boss渲染错误: ${error.message}`);
+            }
+            
+            // 绘制调试信息
+            ctx.fillStyle = '#0f0';
+            ctx.font = '16px monospace';
+            ctx.fillText(`Boss: ${boss.name}`, 10, 30);
+            ctx.fillText(`位置: (${boss.x.toFixed(0)}, ${boss.y.toFixed(0)})`, 10, 50);
+            ctx.fillText(`血量: ${boss.health}/${boss.maxHealth}`, 10, 70);
+            ctx.fillText(`阶段: ${boss.currentPhase + 1}`, 10, 90);
+            ctx.fillText(`资源加载: ${assetManager.loaded ? '是' : '否'}`, 10, 110);
+            
+            setTimeout(renderLoop, 100);
+        }
+    </script>
+</body>
+</html>

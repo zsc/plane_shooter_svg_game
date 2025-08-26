@@ -789,9 +789,20 @@ class Boss {
         }
         
         // 渲染Boss主体 - 优先使用资源管理器
+        console.log(`Boss渲染 - ID: ${this.id}, 位置: (${this.x}, ${this.y}), 活跃: ${this.active}, AssetManager存在: ${!!assetManager}, 已加载: ${assetManager?.loaded}`);
+        
+        // 先绘制一个绿色圆圈标记Boss中心位置
+        renderer.ctx.save();
+        renderer.ctx.fillStyle = 'lime';
+        renderer.ctx.beginPath();
+        renderer.ctx.arc(this.x, this.y, 10, 0, Math.PI * 2);
+        renderer.ctx.fill();
+        renderer.ctx.restore();
+        
         if (assetManager && assetManager.loaded) {
             this.renderWithAssets(renderer, assetManager);
         } else {
+            console.warn('使用基础Boss渲染（AssetManager未就绪）');
             this.renderMainBody(renderer);
         }
         
@@ -815,6 +826,8 @@ class Boss {
     renderWithAssets(renderer, assetManager) {
         // 根据Boss ID渲染对应的SVG资源
         const assetKey = `bosses.${this.id}`;
+        console.log(`尝试渲染Boss资源: ${assetKey}, 存在: ${assetManager.hasAsset(assetKey)}`);
+        
         if (assetManager.hasAsset(assetKey)) {
             assetManager.drawAsset(
                 renderer.ctx,
@@ -825,6 +838,7 @@ class Boss {
                 1  // 缩放
             );
         } else {
+            console.warn(`Boss资源未找到: ${assetKey}, 使用基础渲染`);
             // 降级到基础渲染
             this.renderMainBody(renderer);
         }

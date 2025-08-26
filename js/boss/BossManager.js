@@ -40,6 +40,15 @@ class BossManager {
     }
     
     /**
+     * 初始化
+     */
+    init(onSpawnBoss, onBossDefeated) {
+        this.onSpawnBoss = onSpawnBoss;
+        this.onBossDefeated = onBossDefeated;
+        console.log('Boss管理器初始化完成');
+    }
+    
+    /**
      * 初始化Boss模板
      */
     initializeBossTemplates() {
@@ -441,17 +450,35 @@ class BossManager {
     /**
      * 生成Boss
      */
-    spawnBoss(bossId) {
-        const template = this.bossTemplates[bossId];
-        if (!template) {
-            console.warn(`未找到Boss模板: ${bossId}`);
-            return null;
+    spawnBoss(bossData) {
+        let template;
+        
+        // 支持两种调用方式：传入ID字符串或配置对象
+        if (typeof bossData === 'string') {
+            template = this.bossTemplates[bossData];
+            if (!template) {
+                console.warn(`未找到Boss模板: ${bossData}`);
+                return null;
+            }
+        } else {
+            // 从配置对象中获取type并查找模板
+            const bossType = bossData.type || 'bomber_commander';
+            template = this.bossTemplates[bossType];
+            if (!template) {
+                console.warn(`未找到Boss模板: ${bossType}`);
+                return null;
+            }
         }
         
         // 创建Boss实例
         this.currentBoss = new Boss(template);
         this.inBossBattle = true;
         this.battleStartTime = Date.now();
+        
+        // 触发生成回调
+        if (this.onSpawnBoss) {
+            this.onSpawnBoss(this.currentBoss);
+        }
         this.battleWarningShown = false;
         
         // 重置统计数据

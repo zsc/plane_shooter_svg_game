@@ -379,6 +379,17 @@ class BulletSystem {
     }
     
     /**
+     * 清空所有敌人子弹（炸弹效果）
+     */
+    clearEnemyBullets() {
+        this.enemyBullets.forEach(bullet => {
+            bullet.active = false;
+            this.returnBulletToPool(bullet);
+        });
+        this.enemyBullets = [];
+    }
+    
+    /**
      * 清空所有子弹
      */
     clear() {

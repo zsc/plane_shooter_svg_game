@@ -65,6 +65,14 @@ class Player {
         this.shieldActive = false;
         this.shieldTime = 0;
         
+        // 炸弹系统
+        this.maxBombs = 3;
+        this.bombs = this.maxBombs;
+        this.bombCooldown = 0;
+        this.bombCooldownTime = 1; // 1秒冷却时间
+        this.isBombActive = false;
+        this.bombAnimationTime = 0;
+        
         // 边界
         this.bounds = GameConfig.PLAYER.BOUNDS;
     }
@@ -89,6 +97,9 @@ class Player {
         
         // 更新无敌时间
         this.updateInvincibility(deltaTime);
+        
+        // 更新炸弹状态
+        this.updateBomb(deltaTime);
         
         // 检查边界
         this.checkBounds();
@@ -379,6 +390,68 @@ class Player {
     getSpeed() {
         return Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
     }
+    
+    /**
+     * 使用炸弹
+     * @returns {boolean} 是否成功使用炸弹
+     */
+    useBomb() {
+        // 检查是否可以使用炸弹
+        if (this.bombs <= 0 || this.bombCooldown > 0 || this.isBombActive) {
+            return false;
+        }
+        
+        // 使用炸弹
+        this.bombs--;
+        this.bombCooldown = this.bombCooldownTime;
+        this.isBombActive = true;
+        this.bombAnimationTime = 1.5; // 1.5秒动画时间
+        
+        console.log(`使用炸弹！剩余: ${this.bombs}/${this.maxBombs}`);
+        return true;
+    }
+    
+    /**
+     * 更新炸弹状态
+     * @param {number} deltaTime - 时间增量
+     */
+    updateBomb(deltaTime) {
+        // 更新冷却时间
+        if (this.bombCooldown > 0) {
+            this.bombCooldown -= deltaTime;
+        }
+        
+        // 更新炸弹动画
+        if (this.isBombActive) {
+            this.bombAnimationTime -= deltaTime;
+            if (this.bombAnimationTime <= 0) {
+                this.isBombActive = false;
+            }
+        }
+    }
+    
+    /**
+     * 添加炸弹
+     * @param {number} count - 添加的炸弹数量
+     */
+    addBombs(count = 1) {
+        this.bombs = Math.min(this.bombs + count, this.maxBombs);
+        console.log(`获得${count}个炸弹！当前: ${this.bombs}/${this.maxBombs}`);
+    }
+    
+    /**
+     * 获取炸弹爆炸范围
+     * @returns {Object} 爆炸范围信息
+     */
+    getBombExplosionArea() {
+        return {
+            x: this.x,
+            y: this.y,
+            radius: 300, // 爆炸半径
+            damage: 500, // 爆炸伤害
+            force: 200   // 击退力度
+        };
+    }
 
     /**
      * 重置玩家
@@ -396,5 +469,9 @@ class Player {
         this.isDead = false;
         this.bullets = [];
         this.fireCooldown = 0;
+        this.bombs = this.maxBombs;
+        this.bombCooldown = 0;
+        this.isBombActive = false;
+        this.bombAnimationTime = 0;
     }
 }

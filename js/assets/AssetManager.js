@@ -127,6 +127,53 @@ class AssetManager {
                     </svg>`,
                     width: 64,
                     height: 64
+                },
+                drone: {
+                    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="15" fill="#FF6600" stroke="#CC3300" stroke-width="2"/>
+                        <path d="M50,35 L60,25 M50,35 L40,25" stroke="#FF9900" stroke-width="3"/>
+                        <path d="M50,65 L60,75 M50,65 L40,75" stroke="#FF9900" stroke-width="3"/>
+                        <path d="M35,50 L25,40 M35,50 L25,60" stroke="#FF9900" stroke-width="3"/>
+                        <path d="M65,50 L75,40 M65,50 L75,60" stroke="#FF9900" stroke-width="3"/>
+                        <circle cx="50" cy="50" r="8" fill="#FFCC00"/>
+                        <circle cx="50" cy="50" r="4" fill="#FF0000"/>
+                    </svg>`,
+                    width: 20,
+                    height: 20
+                },
+                bomber: {
+                    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M50,75 L35,50 L35,35 L50,20 L65,35 L65,50 Z" 
+                              fill="#B71C1C" stroke="#8B0000" stroke-width="2"/>
+                        <path d="M35,45 L15,50 L15,60 L35,55 Z" fill="#D32F2F"/>
+                        <path d="M65,45 L85,50 L85,60 L65,55 Z" fill="#D32F2F"/>
+                        <rect x="18" y="53" width="8" height="4" fill="#FFD700"/>
+                        <rect x="74" y="53" width="8" height="4" fill="#FFD700"/>
+                        <ellipse cx="50" cy="35" rx="8" ry="6" fill="#FF5252" opacity="0.7"/>
+                        <circle cx="45" cy="65" r="4" fill="#FFA000"/>
+                        <circle cx="55" cy="65" r="4" fill="#FFA000"/>
+                    </svg>`,
+                    width: 48,
+                    height: 48
+                },
+                gunship: {
+                    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="30" y="30" width="40" height="40" rx="8" fill="#37474F" stroke="#263238" stroke-width="2"/>
+                        <path d="M30,40 L10,35 L10,45 L30,45 Z" fill="#546E7A"/>
+                        <path d="M70,40 L90,35 L90,45 L70,45 Z" fill="#546E7A"/>
+                        <path d="M30,55 L10,50 L10,60 L30,60 Z" fill="#546E7A"/>
+                        <path d="M70,55 L90,50 L90,60 L70,60 Z" fill="#546E7A"/>
+                        <rect x="12" y="38" width="12" height="3" fill="#FFD700"/>
+                        <rect x="76" y="38" width="12" height="3" fill="#FFD700"/>
+                        <rect x="12" y="53" width="12" height="3" fill="#FFD700"/>
+                        <rect x="76" y="53" width="12" height="3" fill="#FFD700"/>
+                        <circle cx="40" cy="50" r="3" fill="#FF5722"/>
+                        <circle cx="50" cy="50" r="3" fill="#FF5722"/>
+                        <circle cx="60" cy="50" r="3" fill="#FF5722"/>
+                        <rect x="45" y="62" width="10" height="4" fill="#FFA000"/>
+                    </svg>`,
+                    width: 64,
+                    height: 64
                 }
             },
             

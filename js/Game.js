@@ -137,6 +137,11 @@ class Game {
                     this.bulletSystem.addBullets(newBullets, false);
                 }
                 
+                // 处理炸弹输入
+                if (this.inputManager.isKeyPressed('Space')) {
+                    this.triggerBomb();
+                }
+                
                 // 更新敌人
                 this.updateEnemies(dt);
                 
@@ -279,6 +284,10 @@ class Game {
                     maxEnergy: this.player.maxEnergy,
                     score: this.player.score,
                     lives: this.player.lives,
+                    bombs: this.player.bombs,
+                    maxBombs: this.player.maxBombs,
+                    bombCooldown: this.player.bombCooldown,
+                    bombCooldownTime: this.player.bombCooldownTime,
                     fps: this.gameLoop.getFPS()
                 });
                 
@@ -633,35 +642,6 @@ class Game {
         }
     }
     
-    /**
-     * 触发全屏炸弹效果
-     */
-    triggerBomb() {
-        console.log('全屏炸弹触发！');
-        
-        // 清除所有敌机
-        this.enemies.forEach(enemy => {
-            enemy.takeDamage(9999);
-            this.particleSystem.createExplosion(enemy.x, enemy.y);
-        });
-        
-        // 清除所有敌人子弹
-        this.bulletSystem.enemyBullets.forEach(bullet => {
-            bullet.active = false;
-        });
-        
-        // 对Boss造成伤害
-        if (this.currentBoss && this.currentBoss.active) {
-            this.currentBoss.takeDamage(500);
-        }
-        
-        // 创建全屏特效
-        for (let i = 0; i < 10; i++) {
-            const x = Math.random() * GameConfig.CANVAS.WIDTH;
-            const y = Math.random() * GameConfig.CANVAS.HEIGHT;
-            this.particleSystem.createExplosion(x, y);
-        }
-    }
     
     /**
      * 处理子弹碰撞效果
@@ -700,6 +680,107 @@ class Game {
                     this.particleSystem.createSparks(this.player.x, this.player.y);
                 }
             });
+        }
+    }
+    
+    /**
+     * 触发炸弹
+     */
+    triggerBomb() {
+        // 检查玩家是否可以使用炸弹
+        if (!this.player.useBomb()) {
+            return;
+        }
+        
+        // 播放炸弹音效
+        if (window.audioManager) {
+            window.audioManager.playSound('powerup');
+        }
+        
+        // 获取爆炸范围
+        const explosion = this.player.getBombExplosionArea();
+        
+        // 创建视觉效果
+        this.createBombEffect(explosion);
+        
+        // 清除所有敌人子弹
+        this.bulletSystem.clearEnemyBullets();
+        
+        // 对所有敌人造成伤害
+        for (let i = this.enemies.length - 1; i >= 0; i--) {
+            const enemy = this.enemies[i];
+            const dx = enemy.x - explosion.x;
+            const dy = enemy.y - explosion.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // 在爆炸范围内的敌人
+            if (distance <= explosion.radius) {
+                // 计算伤害（距离越近伤害越高）
+                const damageRatio = 1 - (distance / explosion.radius);
+                const damage = explosion.damage * damageRatio;
+                
+                // 对敌人造成伤害
+                if (enemy.takeDamage) {
+                    enemy.takeDamage(damage);
+                } else {
+                    enemy.health -= damage;
+                    if (enemy.health <= 0) {
+                        enemy.active = false;
+                        enemy.isDead = true;
+                    }
+                }
+                
+                // 击退效果
+                if (explosion.force > 0 && distance > 0) {
+                    const forceX = (dx / distance) * explosion.force * damageRatio;
+                    const forceY = (dy / distance) * explosion.force * damageRatio;
+                    enemy.vx = (enemy.vx || 0) + forceX;
+                    enemy.vy = (enemy.vy || 0) + forceY;
+                }
+            }
+        }
+        
+        // 清除所有敌方子弹
+        if (this.bulletSystem) {
+            this.bulletSystem.clearEnemyBullets();
+        }
+        
+        // 对Boss造成伤害
+        if (this.currentBoss && this.currentBoss.active) {
+            const dx = this.currentBoss.x - explosion.x;
+            const dy = this.currentBoss.y - explosion.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance <= explosion.radius) {
+                const damageRatio = 0.5; // Boss只受50%伤害
+                const damage = explosion.damage * damageRatio;
+                this.currentBoss.takeDamage(damage);
+            }
+        }
+    }
+    
+    /**
+     * 创建炸弹视觉效果
+     * @param {Object} explosion - 爆炸参数
+     */
+    createBombEffect(explosion) {
+        // 创建多层次爆炸效果
+        for (let i = 0; i < 3; i++) {
+            setTimeout(() => {
+                // 创建爆炸圈
+                const radius = explosion.radius * (0.5 + i * 0.3);
+                this.particleSystem.createBombExplosion(
+                    explosion.x, 
+                    explosion.y, 
+                    radius,
+                    i === 0 ? '#FFFFFF' : i === 1 ? '#FFFF00' : '#FF6600'
+                );
+            }, i * 100);
+        }
+        
+        // 屏幕震动效果（如果实现了）
+        if (this.renderer && this.renderer.shakeScreen) {
+            this.renderer.shakeScreen(0.5, 10);
         }
     }
     

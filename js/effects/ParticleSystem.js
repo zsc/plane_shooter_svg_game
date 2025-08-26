@@ -191,6 +191,52 @@ class ParticleSystem {
     }
     
     /**
+     * 创建炸弹爆炸效果
+     */
+    createBombExplosion(x, y, radius, color = '#FFFFFF') {
+        // 创建爆炸环
+        const ringParticles = 48;
+        for (let i = 0; i < ringParticles; i++) {
+            if (this.particles.length >= this.maxParticles) break;
+            
+            const particle = this.getParticleFromPool();
+            const angle = (i / ringParticles) * Math.PI * 2;
+            const speed = radius / 0.5; // 0.5秒扩展到最大半径
+            
+            particle.x = x;
+            particle.y = y;
+            particle.vx = Math.cos(angle) * speed;
+            particle.vy = Math.sin(angle) * speed;
+            particle.size = 5;
+            particle.color = color;
+            particle.maxLife = 0.5;
+            particle.life = 0.5;
+            particle.alpha = 1;
+            particle.alphaDecay = 2; // 快速消失
+            particle.type = 'ring';
+            
+            this.particles.push(particle);
+        }
+        
+        // 创建中心闪光
+        const flashParticle = this.getParticleFromPool();
+        flashParticle.x = x;
+        flashParticle.y = y;
+        flashParticle.vx = 0;
+        flashParticle.vy = 0;
+        flashParticle.size = radius;
+        flashParticle.color = color;
+        flashParticle.maxLife = 0.3;
+        flashParticle.life = 0.3;
+        flashParticle.alpha = 0.8;
+        flashParticle.alphaDecay = 2.67;
+        flashParticle.type = 'flash';
+        flashParticle.sizeGrow = -radius / 0.3; // 收缩
+        
+        this.particles.push(flashParticle);
+    }
+    
+    /**
      * 创建击中效果
      */
     createHitEffect(x, y, config = {}) {

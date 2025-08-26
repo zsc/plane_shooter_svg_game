@@ -456,6 +456,43 @@ class Renderer {
         
         this.ctx.restore();
         
+        // 炸弹数量显示
+        if (gameData.bombs !== undefined) {
+            const bombX = 20;
+            const bombY = gameData.energy !== undefined ? 80 : 50;
+            const bombWidth = 120;
+            const bombHeight = 30;
+            
+            // 背景框
+            this.ctx.save();
+            this.ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            this.ctx.strokeStyle = '#FFD700';
+            this.ctx.lineWidth = 2;
+            this.ctx.fillRect(bombX, bombY, bombWidth, bombHeight);
+            this.ctx.strokeRect(bombX, bombY, bombWidth, bombHeight);
+            
+            // 炸弹图标和数量
+            this.ctx.fillStyle = '#FFD700';
+            this.ctx.font = 'bold 16px Microsoft YaHei';
+            this.ctx.textAlign = 'left';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText('💣', bombX + 10, bombY + bombHeight/2);
+            
+            // 炸弹数量
+            this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.font = 'bold 14px Microsoft YaHei';
+            this.ctx.fillText(`x ${gameData.bombs}/${gameData.maxBombs || 3}`, bombX + 35, bombY + bombHeight/2);
+            
+            // 冷却指示器
+            if (gameData.bombCooldown > 0) {
+                const cooldownWidth = (bombWidth - 10) * (1 - gameData.bombCooldown / gameData.bombCooldownTime);
+                this.ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
+                this.ctx.fillRect(bombX + 5, bombY + bombHeight - 5, cooldownWidth, 3);
+            }
+            
+            this.ctx.restore();
+        }
+        
         // FPS显示
         if (GameConfig.RENDER.SHOW_FPS && gameData.fps !== undefined) {
             this.drawText(

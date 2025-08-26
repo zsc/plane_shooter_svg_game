@@ -49,6 +49,17 @@ class Game {
             return false;
         }
         
+        // 初始化音频系统
+        if (window.audioManager) {
+            window.audioManager.init().then(() => {
+                console.log('音频系统初始化完成');
+                // 播放主菜单音乐
+                window.audioManager.playMusic('menu');
+            }).catch(error => {
+                console.warn('音频系统初始化失败:', error);
+            });
+        }
+        
         // 初始化各个系统
         this.renderer = new Renderer(this.canvas);
         this.gameLoop = new GameLoop();
@@ -206,6 +217,11 @@ class Game {
                 if (this.levelManager) {
                     this.levelManager.loadLevel(0);
                 }
+                
+                // 播放战斗音乐
+                if (window.audioManager) {
+                    window.audioManager.crossfadeMusic('level1', 1000);
+                }
             };
             
             playingState.render = (renderer) => {
@@ -320,6 +336,11 @@ class Game {
         if (gameOverState) {
             gameOverState.enter = () => {
                 console.log('游戏结束，最终得分：' + this.player.score);
+                
+                // 播放游戏结束音乐
+                if (window.audioManager) {
+                    window.audioManager.playMusic('gameover');
+                }
             };
             
             gameOverState.render = (renderer) => {
@@ -643,6 +664,11 @@ class Game {
         if (this.currentBoss) {
             // Boss入场动画
             this.currentBoss.startEntranceAnimation();
+        }
+        
+        // 播放Boss战音乐
+        if (window.audioManager) {
+            window.audioManager.crossfadeMusic('boss', 1500);
         }
     }
     

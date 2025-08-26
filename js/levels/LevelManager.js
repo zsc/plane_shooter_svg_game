@@ -361,6 +361,11 @@ class LevelManager {
         // 添加Boss击败奖励
         this.levelStats.score += 5000;
         this.levelStats.enemiesKilled++;
+        
+        // 播放胜利音乐
+        if (window.audioManager) {
+            window.audioManager.playMusic('victory');
+        }
     }
     
     /**

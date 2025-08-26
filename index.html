@@ -95,6 +95,95 @@
         #controls.hidden {
             display: none;
         }
+        
+        /* 音频控制面板 */
+        #audioControls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            padding: 15px;
+            color: white;
+            font-family: 'Orbitron', monospace;
+            font-size: 14px;
+            z-index: 100;
+            min-width: 200px;
+        }
+        
+        #audioControls h3 {
+            margin: 0 0 10px 0;
+            color: #FFD700;
+            font-size: 16px;
+            text-align: center;
+        }
+        
+        .audio-control {
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .audio-control label {
+            color: #00FF00;
+            margin-right: 10px;
+        }
+        
+        .audio-control input[type="range"] {
+            width: 100px;
+            cursor: pointer;
+        }
+        
+        .audio-control span {
+            color: #FFD700;
+            min-width: 40px;
+            text-align: right;
+        }
+        
+        .audio-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Orbitron', monospace;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .audio-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.5);
+        }
+        
+        .audio-button.muted {
+            background: linear-gradient(135deg, #FF6B6B 0%, #C44569 100%);
+        }
+        
+        #audioControls.hidden {
+            display: none;
+        }
+        
+        .keyboard-hint {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #444;
+            font-size: 12px;
+            color: #888;
+        }
+        
+        .keyboard-hint div {
+            margin: 3px 0;
+        }
+        
+        .key {
+            color: #FFD700;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -121,8 +210,32 @@
     
     <!-- 控制提示 -->
     <div id="controls">
-        <p>方向键/WASD: 移动 | 1/2/3: 切换战机 | Tab: 切换武器</p>
-        <p>ESC: 暂停 | F3: 调试模式 | 空格: 开火（自动）</p>
+        <p>方向键/WASD: 移动 | 1/2/3: 切换战机 | Tab: 切换武器 | 空格: 炸弹</p>
+        <p>ESC: 暂停 | F3: 调试模式 | M: 静音 | -/+: 音量</p>
+    </div>
+    
+    <!-- 音频控制面板 -->
+    <div id="audioControls">
+        <h3>🎵 音频控制</h3>
+        
+        <div class="audio-control">
+            <label>音乐:</label>
+            <input type="range" id="musicVolume" min="0" max="100" value="50">
+            <span id="musicVolumeText">50%</span>
+        </div>
+        
+        <div class="audio-control">
+            <label>音效:</label>
+            <input type="range" id="sfxVolume" min="0" max="100" value="50">
+            <span id="sfxVolumeText">50%</span>
+        </div>
+        
+        <button id="muteButton" class="audio-button">静音</button>
+        
+        <div class="keyboard-hint">
+            <div><span class="key">M</span> - 静音切换</div>
+            <div><span class="key">-/+</span> - 音量调节</div>
+        </div>
     </div>
     
     <script src="js/core/GameConfig.js"></script>
@@ -212,6 +325,61 @@
                     startButton.textContent = '重新开始';
                     startButton.classList.remove('hidden');
                     pauseButton.classList.add('hidden');
+                }
+            });
+            
+            // 音频控制初始化
+            const musicVolumeSlider = document.getElementById('musicVolume');
+            const musicVolumeText = document.getElementById('musicVolumeText');
+            const sfxVolumeSlider = document.getElementById('sfxVolume');
+            const sfxVolumeText = document.getElementById('sfxVolumeText');
+            const muteButton = document.getElementById('muteButton');
+            
+            // 音乐音量控制
+            musicVolumeSlider.addEventListener('input', (e) => {
+                const volume = e.target.value / 100;
+                if (window.audioManager) {
+                    window.audioManager.setMusicVolume(volume);
+                    musicVolumeText.textContent = `${e.target.value}%`;
+                }
+            });
+            
+            // 音效音量控制
+            sfxVolumeSlider.addEventListener('input', (e) => {
+                const volume = e.target.value / 100;
+                if (window.audioManager) {
+                    window.audioManager.setSfxVolume(volume);
+                    sfxVolumeText.textContent = `${e.target.value}%`;
+                }
+            });
+            
+            // 静音按钮
+            muteButton.addEventListener('click', () => {
+                if (window.audioManager) {
+                    const muted = window.audioManager.toggleMute();
+                    muteButton.textContent = muted ? '取消静音' : '静音';
+                    muteButton.classList.toggle('muted', muted);
+                }
+            });
+            
+            // 键盘快捷键
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'm' || e.key === 'M') {
+                    muteButton.click();
+                } else if (e.key === '-' || e.key === '_') {
+                    const currentVolume = parseInt(musicVolumeSlider.value);
+                    const newVolume = Math.max(0, currentVolume - 10);
+                    musicVolumeSlider.value = newVolume;
+                    sfxVolumeSlider.value = newVolume;
+                    musicVolumeSlider.dispatchEvent(new Event('input'));
+                    sfxVolumeSlider.dispatchEvent(new Event('input'));
+                } else if (e.key === '=' || e.key === '+') {
+                    const currentVolume = parseInt(musicVolumeSlider.value);
+                    const newVolume = Math.min(100, currentVolume + 10);
+                    musicVolumeSlider.value = newVolume;
+                    sfxVolumeSlider.value = newVolume;
+                    musicVolumeSlider.dispatchEvent(new Event('input'));
+                    sfxVolumeSlider.dispatchEvent(new Event('input'));
                 }
             });
             

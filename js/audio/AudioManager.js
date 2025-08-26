@@ -12,15 +12,15 @@ class AudioManager {
         this.muted = false;
         this.initialized = false;
         
-        // 音乐配置
+        // 音乐配置 - 使用新的管弦乐音轨
         this.musicConfig = {
-            menu: { file: 'audio/menu.wav', volume: 0.5, loop: true },
-            level1: { file: 'audio/level1.wav', volume: 0.4, loop: true },
-            level2: { file: 'audio/level2.wav', volume: 0.4, loop: true },
-            level3: { file: 'audio/level2.wav', volume: 0.4, loop: true }, // 复用level2
-            boss: { file: 'audio/boss.wav', volume: 0.6, loop: true },
-            victory: { file: 'audio/victory.wav', volume: 0.5, loop: false },
-            gameover: { file: 'audio/gameover.wav', volume: 0.4, loop: false }
+            menu: { file: 'audio/main_menu.ogg', volume: 0.5, loop: true },
+            level1: { file: 'audio/battle.ogg', volume: 0.4, loop: true },
+            level2: { file: 'audio/battle.ogg', volume: 0.4, loop: true },
+            level3: { file: 'audio/battle.ogg', volume: 0.4, loop: true },
+            boss: { file: 'audio/boss.ogg', volume: 0.6, loop: true },
+            victory: { file: 'audio/victory.ogg', volume: 0.5, loop: false },
+            gameover: { file: 'audio/game_over.ogg', volume: 0.4, loop: false }
         };
         
         // 音效配置
@@ -204,6 +204,10 @@ class AudioManager {
         
         const fadeInterval = setInterval(() => {
             currentStep++;
+            if (!this.music) {
+                clearInterval(fadeInterval);
+                return;
+            }
             if (currentStep >= steps) {
                 this.music.volume = targetVolume * (this.muted ? 0 : 1);
                 clearInterval(fadeInterval);

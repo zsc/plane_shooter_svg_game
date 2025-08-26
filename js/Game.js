@@ -65,7 +65,7 @@ class Game {
         // 初始化关卡系统 (Phase 3)
         this.levelManager = new LevelManager();
         this.waveManager = new WaveManager();
-        this.bossManager = new BossManager();
+        this.bossManager = new BossManager(this);
         this.powerUpManager = new PowerUpManager();
         
         // 初始化关卡系统连接

@@ -148,10 +148,7 @@ class Game {
                     this.bulletSystem.addBullets(newBullets, false);
                 }
                 
-                // 处理炸弹输入
-                if (this.inputManager.isKeyPressed('Space')) {
-                    this.triggerBomb();
-                }
+                // 炸弹输入已经在 index.html 中处理
                 
                 // 更新敌人
                 this.updateEnemies(dt);
@@ -449,47 +446,11 @@ class Game {
      * 处理全局输入
      */
     handleGlobalInput() {
-        // F3 切换调试模式
-        if (this.inputManager.isKeyPressed('F3')) {
-            this.debugMode = !this.debugMode;
-            const debugDiv = document.getElementById('debugInfo');
-            if (debugDiv) {
-                debugDiv.classList.toggle('show', this.debugMode);
-            }
-        }
+        // 游戏控制已经移到 index.html 中统一处理
+        // 这里保留作为备用或用于其他内部逻辑
         
-        // 数字键切换战机类型
-        if (this.inputManager.isKeyPressed('Digit1')) {
-            if (this.player.aircraftType !== 'fighter') {
-                this.player.aircraftType = 'fighter';
-                console.log('切换到雷电战机');
-                // 视觉反馈
-                this.showMessage = '雷电战机';
-                this.messageTimer = 60; // 显示1秒
-            }
-        } else if (this.inputManager.isKeyPressed('Digit2')) {
-            if (this.player.aircraftType !== 'bomber') {
-                this.player.aircraftType = 'bomber';
-                console.log('切换到重型轰炸机');
-                this.showMessage = '重型轰炸机';
-                this.messageTimer = 60;
-            }
-        } else if (this.inputManager.isKeyPressed('Digit3')) {
-            if (this.player.aircraftType !== 'interceptor') {
-                this.player.aircraftType = 'interceptor';
-                console.log('切换到幽灵拦截机');
-                this.showMessage = '幽灵拦截机';
-                this.messageTimer = 60;
-            }
-        }
-        
-        // Tab键切换武器
-        if (this.inputManager.isKeyPressed('Tab')) {
-            if (this.player.weaponManager) {
-                this.player.weaponManager.switchWeapon();
-                console.log('切换武器');
-            }
-        }
+        // 可以添加其他只在游戏内部处理的输入
+        // 例如：开发者调试快捷键等
     }
 
     /**
@@ -710,6 +671,26 @@ class Game {
                     this.particleSystem.createSparks(this.player.x, this.player.y);
                 }
             });
+        }
+    }
+    
+    /**
+     * 切换战机类型
+     * @param {string} type - 战机类型: fighter, bomber, interceptor
+     */
+    switchAircraft(type) {
+        if (this.player.aircraftType !== type) {
+            this.player.aircraftType = type;
+            this.player.updateAircraftStats();
+            
+            // 显示切换消息
+            const typeNames = {
+                'fighter': '战斗机',
+                'bomber': '轰炸机',
+                'interceptor': '拦截机'
+            };
+            this.showMessage = `战机切换: ${typeNames[type]}`;
+            this.messageTimer = 60;
         }
     }
     

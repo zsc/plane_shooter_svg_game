@@ -362,10 +362,18 @@
                 }
             });
             
-            // 键盘快捷键
-            document.addEventListener('keydown', (e) => {
+            // 统一的键盘事件处理器 - 所有键盘输入的单一入口
+            window.addEventListener('keydown', (e) => {
+                // 获取当前游戏状态
+                const isPlaying = game && game.stateMachine && 
+                    game.stateMachine.getCurrentStateName() === GameConfig.STATES.PLAYING;
+                
+                // 优先处理UI控制（这些在任何状态下都应该工作）
+                
+                // 音量控制快捷键
                 if (e.key === 'm' || e.key === 'M') {
                     muteButton.click();
+                    return;
                 } else if (e.key === '-' || e.key === '_') {
                     const currentVolume = parseInt(musicVolumeSlider.value);
                     const newVolume = Math.max(0, currentVolume - 10);
@@ -373,6 +381,7 @@
                     sfxVolumeSlider.value = newVolume;
                     musicVolumeSlider.dispatchEvent(new Event('input'));
                     sfxVolumeSlider.dispatchEvent(new Event('input'));
+                    return;
                 } else if (e.key === '=' || e.key === '+') {
                     const currentVolume = parseInt(musicVolumeSlider.value);
                     const newVolume = Math.min(100, currentVolume + 10);
@@ -380,20 +389,63 @@
                     sfxVolumeSlider.value = newVolume;
                     musicVolumeSlider.dispatchEvent(new Event('input'));
                     sfxVolumeSlider.dispatchEvent(new Event('input'));
+                    return;
                 }
-            });
-            
-            // 调试模式切换
-            window.addEventListener('keydown', (e) => {
+                
+                // 调试模式切换
                 if (e.key === 'F3') {
+                    e.preventDefault();
                     document.getElementById('debugInfo').classList.toggle('show');
+                    return;
                 }
-            });
-            
-            // 支持Enter键快速开始（保留原有功能）
-            window.addEventListener('keydown', (e) => {
+                
+                // Enter键快速开始（仅在菜单时）
                 if (e.key === 'Enter' && !startButton.classList.contains('hidden')) {
                     startButton.click();
+                    return;
+                }
+                
+                // 游戏进行中的控制
+                if (isPlaying && game) {
+                    // 战机切换 (1/2/3)
+                    if (e.key === '1') {
+                        console.log('切换到战斗机');
+                        game.switchAircraft('fighter');
+                        e.preventDefault();
+                    } else if (e.key === '2') {
+                        console.log('切换到轰炸机');
+                        game.switchAircraft('bomber');
+                        e.preventDefault();
+                    } else if (e.key === '3') {
+                        console.log('切换到拦截机');
+                        game.switchAircraft('interceptor');
+                        e.preventDefault();
+                    } 
+                    // 空格键放炸弹
+                    else if (e.key === ' ' || e.code === 'Space') {
+                        console.log('使用炸弹');
+                        game.triggerBomb();
+                        e.preventDefault();
+                    }
+                    // Tab切换武器
+                    else if (e.key === 'Tab') {
+                        console.log('切换武器');
+                        if (game.player && game.player.weaponManager) {
+                            game.player.weaponManager.switchWeapon();
+                            game.showMessage = `武器: ${game.player.weaponManager.getCurrentWeaponName()}`;
+                            game.messageTimer = 60;
+                        }
+                        e.preventDefault();
+                    }
+                    // ESC暂停
+                    else if (e.key === 'Escape') {
+                        console.log('暂停游戏');
+                        game.stateMachine.changeState(GameConfig.STATES.PAUSED);
+                        e.preventDefault();
+                    }
+                    
+                    // 移动控制仍由InputManager处理（因为需要持续按键检测）
+                    // Arrow keys and WASD are handled by InputManager
                 }
             });
         });

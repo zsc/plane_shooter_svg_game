@@ -89,7 +89,7 @@ class LevelManager {
                     }
                 ],
                 boss: {
-                    type: 'air_fortress',
+                    type: 'bomber_commander',
                     health: 1000,
                     phases: 3,
                     startTime: 90
@@ -140,7 +140,7 @@ class LevelManager {
                     }
                 ],
                 boss: {
-                    type: 'battleship',
+                    type: 'iron_battleship',
                     health: 1500,
                     phases: 4,
                     startTime: 120
@@ -191,7 +191,7 @@ class LevelManager {
                     }
                 ],
                 boss: {
-                    type: 'mothership',
+                    type: 'sky_fortress',
                     health: 2000,
                     phases: 5,
                     startTime: 150

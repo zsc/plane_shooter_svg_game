@@ -769,5 +769,196 @@
         <p>建议配合游戏引擎使用，通过DOM操作或Canvas渲染实现游戏效果。</p>
         <p style="margin-top: 20px; color: #888;">版权所有 © 2024 全民飞机大战开发组</p>
     </div>
+
+    <!-- Section: 游戏音乐 (高品质OGG版本) -->
+    <div class="section">
+        <h2>第五部分：游戏音乐（高品质版）</h2>
+        <div class="assets-grid">
+            <!-- 主菜单音乐 -->
+            <div class="asset-item">
+                <div class="music-player">
+                    <audio controls loop>
+                        <source src="audio/hq/main_menu_heroic_march.ogg" type="audio/ogg">
+                        <source src="audio/menu.wav" type="audio/wav">
+                    </audio>
+                </div>
+                <div class="asset-name">主菜单 - 英雄进行曲</div>
+                <div class="asset-desc">钢琴编曲 | 100 BPM | OGG格式</div>
+            </div>
+
+            <!-- 第一关天空战斗音乐 -->
+            <div class="asset-item">
+                <div class="music-player">
+                    <audio controls loop>
+                        <source src="audio/hq/level_1_sky_battle.ogg" type="audio/ogg">
+                        <source src="audio/level1.wav" type="audio/wav">
+                    </audio>
+                </div>
+                <div class="asset-name">第一关 - 天空激战</div>
+                <div class="asset-desc">电子合成 | 140 BPM | OGG格式</div>
+            </div>
+
+            <!-- 海洋关卡音乐 -->
+            <div class="asset-item">
+                <div class="music-player">
+                    <audio controls loop>
+                        <source src="audio/hq/ocean_level_flowing_waves.ogg" type="audio/ogg">
+                        <source src="audio/level2.wav" type="audio/wav">
+                    </audio>
+                </div>
+                <div class="asset-name">海洋关卡 - 流动之波</div>
+                <div class="asset-desc">钢琴编曲 | 132 BPM | OGG格式</div>
+            </div>
+
+            <!-- 太空关卡音乐 -->
+            <div class="asset-item">
+                <div class="music-player">
+                    <audio controls loop>
+                        <source src="audio/hq/space_level_cosmic_journey.ogg" type="audio/ogg">
+                    </audio>
+                </div>
+                <div class="asset-name">太空关卡 - 宇宙之旅</div>
+                <div class="asset-desc">电子合成 | 128 BPM | OGG格式</div>
+            </div>
+
+            <!-- Boss战音乐 -->
+            <div class="asset-item">
+                <div class="music-player">
+                    <audio controls loop>
+                        <source src="audio/hq/boss_theme_dark_fortress.ogg" type="audio/ogg">
+                        <source src="audio/boss.wav" type="audio/wav">
+                    </audio>
+                </div>
+                <div class="asset-name">Boss战 - 黑暗要塞</div>
+                <div class="asset-desc">铜管乐 | 150 BPM | OGG格式</div>
+            </div>
+
+            <!-- 最终Boss音乐 -->
+            <div class="asset-item">
+                <div class="music-player">
+                    <audio controls loop>
+                        <source src="audio/hq/final_boss_epic_showdown.ogg" type="audio/ogg">
+                    </audio>
+                </div>
+                <div class="asset-name">最终Boss - 史诗对决</div>
+                <div class="asset-desc">铜管乐 | 160 BPM | OGG格式</div>
+            </div>
+
+            <!-- 胜利音乐 -->
+            <div class="asset-item">
+                <div class="music-player">
+                    <audio controls>
+                        <source src="audio/hq/victory_fanfare.ogg" type="audio/ogg">
+                        <source src="audio/victory.wav" type="audio/wav">
+                    </audio>
+                </div>
+                <div class="asset-name">胜利凯歌</div>
+                <div class="asset-desc">弦乐编曲 | 120 BPM | OGG格式</div>
+            </div>
+
+            <!-- 游戏结束音乐 -->
+            <div class="asset-item">
+                <div class="music-player">
+                    <audio controls>
+                        <source src="audio/hq/game_over_lament.ogg" type="audio/ogg">
+                        <source src="audio/gameover.wav" type="audio/wav">
+                    </audio>
+                </div>
+                <div class="asset-name">游戏结束 - 哀歌</div>
+                <div class="asset-desc">弦乐编曲 | 60 BPM | OGG格式</div>
+            </div>
+
+            <!-- 能量提升音效 -->
+            <div class="asset-item">
+                <div class="music-player">
+                    <audio controls>
+                        <source src="audio/hq/power_up_jingle.ogg" type="audio/ogg">
+                        <source src="audio/powerup.wav" type="audio/wav">
+                    </audio>
+                </div>
+                <div class="asset-name">能量提升</div>
+                <div class="asset-desc">电子音效 | 180 BPM | OGG格式</div>
+            </div>
+
+            <!-- 金币收集音效 -->
+            <div class="asset-item">
+                <div class="music-player">
+                    <audio controls>
+                        <source src="audio/hq/coin_collection.ogg" type="audio/ogg">
+                        <source src="audio/coin.wav" type="audio/wav">
+                    </audio>
+                </div>
+                <div class="asset-name">金币收集</div>
+                <div class="asset-desc">电子音效 | 200 BPM | OGG格式</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 音乐数据配置 -->
+    <script>
+        // 游戏音乐配置（高品质版本）
+        window.gameMusicConfig = {
+            menu: {
+                file: 'audio/hq/main_menu_heroic_march.ogg',
+                fallback: 'audio/menu.wav',
+                volume: 0.5,
+                loop: true
+            },
+            level1: {
+                file: 'audio/hq/level_1_sky_battle.ogg',
+                fallback: 'audio/level1.wav',
+                volume: 0.4,
+                loop: true
+            },
+            level2: {
+                file: 'audio/hq/ocean_level_flowing_waves.ogg',
+                fallback: 'audio/level2.wav',
+                volume: 0.4,
+                loop: true
+            },
+            level3: {
+                file: 'audio/hq/space_level_cosmic_journey.ogg',
+                fallback: 'audio/level2.wav',
+                volume: 0.4,
+                loop: true
+            },
+            boss: {
+                file: 'audio/hq/boss_theme_dark_fortress.ogg',
+                fallback: 'audio/boss.wav',
+                volume: 0.6,
+                loop: true
+            },
+            finalBoss: {
+                file: 'audio/hq/final_boss_epic_showdown.ogg',
+                fallback: 'audio/boss.wav',
+                volume: 0.7,
+                loop: true
+            },
+            victory: {
+                file: 'audio/hq/victory_fanfare.ogg',
+                fallback: 'audio/victory.wav',
+                volume: 0.5,
+                loop: false
+            },
+            gameover: {
+                file: 'audio/hq/game_over_lament.ogg',
+                fallback: 'audio/gameover.wav',
+                volume: 0.4,
+                loop: false
+            },
+            powerup: {
+                file: 'audio/hq/power_up_jingle.ogg',
+                fallback: 'audio/powerup.wav',
+                volume: 0.3,
+                loop: false
+            },
+            coin: {
+                file: 'audio/hq/coin_collection.ogg',
+                fallback: 'audio/coin.wav',
+                volume: 0.2,
+                loop: false
+            }
+        };
+    </script>
 </body>
 </html>

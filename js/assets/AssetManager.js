@@ -168,6 +168,68 @@ class AssetManager {
                 }
             },
             
+            // Boss
+            bosses: {
+                bomber_commander: {
+                    svg: `<svg viewBox="0 0 150 150" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="45" y="30" width="60" height="80" rx="10" fill="#2C3E50" stroke="#1A252F" stroke-width="3"/>
+                        <path d="M45,50 L10,65 L10,85 L45,75 Z" fill="#34495E" stroke="#1A252F" stroke-width="2"/>
+                        <path d="M105,50 L140,65 L140,85 L105,75 Z" fill="#34495E" stroke="#1A252F" stroke-width="2"/>
+                        <rect x="20" y="72" width="15" height="5" fill="#E74C3C"/>
+                        <rect x="115" y="72" width="15" height="5" fill="#E74C3C"/>
+                        <rect x="60" y="40" width="30" height="15" rx="3" fill="#3498DB" opacity="0.8"/>
+                        <circle cx="55" cy="100" r="5" fill="#FF6B6B"/>
+                        <circle cx="75" cy="100" r="5" fill="#FF6B6B"/>
+                        <circle cx="95" cy="100" r="5" fill="#FF6B6B"/>
+                        <rect x="50" y="60" width="50" height="30" fill="#1A252F" opacity="0.3"/>
+                        <text x="75" y="80" text-anchor="middle" fill="#FFD700" font-size="12" font-weight="bold">B-01</text>
+                    </svg>`,
+                    width: 120,
+                    height: 120
+                },
+                iron_battleship: {
+                    svg: `<svg viewBox="0 0 150 150" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="25" y="40" width="100" height="70" rx="5" fill="#455A64" stroke="#263238" stroke-width="3"/>
+                        <circle cx="50" cy="55" r="12" fill="#607D8B" stroke="#263238" stroke-width="2"/>
+                        <rect x="45" y="45" width="10" height="20" fill="#263238"/>
+                        <circle cx="100" cy="55" r="12" fill="#607D8B" stroke="#263238" stroke-width="2"/>
+                        <rect x="95" y="45" width="10" height="20" fill="#263238"/>
+                        <rect x="65" y="30" width="20" height="30" fill="#37474F"/>
+                        <rect x="70" y="20" width="10" height="15" fill="#263238"/>
+                        <rect x="20" y="105" width="110" height="15" rx="5" fill="#37474F"/>
+                        <circle cx="35" cy="112" r="5" fill="#263238"/>
+                        <circle cx="55" cy="112" r="5" fill="#263238"/>
+                        <circle cx="75" cy="112" r="5" fill="#263238"/>
+                        <circle cx="95" cy="112" r="5" fill="#263238"/>
+                        <circle cx="115" cy="112" r="5" fill="#263238"/>
+                        <circle cx="75" cy="75" r="4" fill="#FF5252">
+                            <animate attributeName="opacity" values="1;0.3;1" dur="1s" repeatCount="indefinite"/>
+                        </circle>
+                    </svg>`,
+                    width: 130,
+                    height: 130
+                },
+                sky_fortress: {
+                    svg: `<svg viewBox="0 0 150 150" xmlns="http://www.w3.org/2000/svg">
+                        <ellipse cx="75" cy="75" rx="60" ry="40" fill="#1E88E5" stroke="#0D47A1" stroke-width="3"/>
+                        <rect x="55" y="35" width="40" height="60" rx="5" fill="#1565C0"/>
+                        <circle cx="40" cy="75" r="15" fill="#42A5F5" stroke="#0D47A1" stroke-width="2"/>
+                        <circle cx="110" cy="75" r="15" fill="#42A5F5" stroke="#0D47A1" stroke-width="2"/>
+                        <rect x="37" y="70" width="6" height="10" fill="#FF5722"/>
+                        <rect x="107" y="70" width="6" height="10" fill="#FF5722"/>
+                        <circle cx="75" cy="50" r="10" fill="#90CAF9" opacity="0.8"/>
+                        <path d="M45,90 L50,110 L55,90 Z" fill="#FFD700"/>
+                        <path d="M70,90 L75,110 L80,90 Z" fill="#FFD700"/>
+                        <path d="M95,90 L100,110 L105,90 Z" fill="#FFD700"/>
+                        <circle cx="75" cy="75" r="5" fill="#FF0000">
+                            <animate attributeName="r" values="5;8;5" dur="2s" repeatCount="indefinite"/>
+                        </circle>
+                    </svg>`,
+                    width: 140,
+                    height: 140
+                }
+            },
+            
             // 道具
             powerups: {
                 health: {

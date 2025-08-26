@@ -11,6 +11,8 @@ class AudioManager {
         this.sfxVolume = 0.5;
         this.muted = false;
         this.initialized = false;
+        this.fadeInterval = null;
+        this.fadeTimeout = null;
         
         // 音乐配置 - 使用新的管弦乐音轨
         this.musicConfig = {
@@ -79,20 +81,51 @@ class AudioManager {
         
         // 播放新音乐
         const config = this.musicConfig[musicName];
-        this.music = new Audio(config.file);
-        this.music.volume = config.volume * this.musicVolume * (this.muted ? 0 : 1);
-        this.music.loop = config.loop;
-        this.currentMusicName = musicName;
-        
-        this.music.play().catch(error => {
-            console.warn(`无法播放音乐: ${musicName}`, error);
-        });
+        try {
+            this.music = new Audio(config.file);
+            this.music.volume = config.volume * this.musicVolume * (this.muted ? 0 : 1);
+            this.music.loop = config.loop;
+            this.currentMusicName = musicName;
+            
+            // 添加加载完成事件
+            this.music.addEventListener('canplaythrough', () => {
+                if (this.music && this.currentMusicName === musicName) {
+                    this.music.play().catch(error => {
+                        console.warn(`无法播放音乐: ${musicName}`, error);
+                    });
+                }
+            }, { once: true });
+            
+            // 添加错误处理
+            this.music.addEventListener('error', (error) => {
+                console.warn(`音乐加载失败: ${musicName}`, error);
+                this.music = null;
+                this.currentMusicName = null;
+            }, { once: true });
+            
+            // 尝试加载音乐
+            this.music.load();
+        } catch (error) {
+            console.warn(`创建音频失败: ${musicName}`, error);
+            this.music = null;
+            this.currentMusicName = null;
+        }
     }
     
     /**
      * 停止背景音乐
      */
     stopMusic() {
+        // 清除任何正在进行的淡入淡出
+        if (this.fadeInterval) {
+            clearInterval(this.fadeInterval);
+            this.fadeInterval = null;
+        }
+        if (this.fadeTimeout) {
+            clearTimeout(this.fadeTimeout);
+            this.fadeTimeout = null;
+        }
+        
         if (this.music) {
             this.music.pause();
             this.music.currentTime = 0;
@@ -190,6 +223,12 @@ class AudioManager {
      * 淡入音乐
      */
     fadeInMusic(musicName, duration = 2000) {
+        // 清除之前的淡入淡出
+        if (this.fadeInterval) {
+            clearInterval(this.fadeInterval);
+            this.fadeInterval = null;
+        }
+        
         this.playMusic(musicName);
         
         if (!this.music) return;
@@ -202,15 +241,17 @@ class AudioManager {
         this.music.volume = 0;
         let currentStep = 0;
         
-        const fadeInterval = setInterval(() => {
+        this.fadeInterval = setInterval(() => {
             currentStep++;
             if (!this.music) {
-                clearInterval(fadeInterval);
+                clearInterval(this.fadeInterval);
+                this.fadeInterval = null;
                 return;
             }
             if (currentStep >= steps) {
                 this.music.volume = targetVolume * (this.muted ? 0 : 1);
-                clearInterval(fadeInterval);
+                clearInterval(this.fadeInterval);
+                this.fadeInterval = null;
             } else {
                 this.music.volume = volumeStep * currentStep * (this.muted ? 0 : 1);
             }
@@ -223,6 +264,12 @@ class AudioManager {
     fadeOutMusic(duration = 2000) {
         if (!this.music || this.music.paused) return;
         
+        // 清除之前的淡入淡出
+        if (this.fadeInterval) {
+            clearInterval(this.fadeInterval);
+            this.fadeInterval = null;
+        }
+        
         const startVolume = this.music.volume;
         const steps = 20;
         const stepTime = duration / steps;
@@ -230,13 +277,21 @@ class AudioManager {
         
         let currentStep = 0;
         
-        const fadeInterval = setInterval(() => {
+        this.fadeInterval = setInterval(() => {
             currentStep++;
+            if (!this.music) {
+                clearInterval(this.fadeInterval);
+                this.fadeInterval = null;
+                return;
+            }
             if (currentStep >= steps) {
                 this.stopMusic();
-                clearInterval(fadeInterval);
+                clearInterval(this.fadeInterval);
+                this.fadeInterval = null;
             } else {
-                this.music.volume = startVolume - (volumeStep * currentStep);
+                if (this.music) {
+                    this.music.volume = startVolume - (volumeStep * currentStep);
+                }
             }
         }, stepTime);
     }
@@ -246,6 +301,17 @@ class AudioManager {
      */
     crossfadeMusic(newMusicName, duration = 1000) {
         if (!this.musicConfig[newMusicName]) return;
+        
+        // 如果是同一首音乐，不做处理
+        if (this.currentMusicName === newMusicName && this.music && !this.music.paused) {
+            return;
+        }
+        
+        // 清除之前的超时
+        if (this.fadeTimeout) {
+            clearTimeout(this.fadeTimeout);
+            this.fadeTimeout = null;
+        }
         
         // 如果没有当前音乐，直接淡入新音乐
         if (!this.music || this.music.paused) {
@@ -257,8 +323,11 @@ class AudioManager {
         this.fadeOutMusic(duration);
         
         // 淡入新音乐
-        setTimeout(() => {
-            this.fadeInMusic(newMusicName, duration);
+        this.fadeTimeout = setTimeout(() => {
+            if (this.currentMusicName !== newMusicName) {
+                this.fadeInMusic(newMusicName, duration);
+            }
+            this.fadeTimeout = null;
         }, duration / 2);
     }
     

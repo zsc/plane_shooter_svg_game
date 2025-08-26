@@ -367,6 +367,13 @@ class AssetManager {
     }
     
     /**
+     * 检查资源是否存在
+     */
+    hasAsset(key) {
+        return this.assets.has(key);
+    }
+    
+    /**
      * 获取资源
      */
     getAsset(key) {

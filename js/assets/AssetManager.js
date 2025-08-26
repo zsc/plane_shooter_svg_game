@@ -925,39 +925,164 @@ class AssetManager {
             // 道具
             powerups: {
                 health: {
-                    svg: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="15" y="5" width="10" height="30" fill="#FF0000"/>
-                        <rect x="5" y="15" width="30" height="10" fill="#FF0000"/>
-                        <rect x="17" y="7" width="6" height="26" fill="#FF6666" opacity="0.7"/>
-                        <rect x="7" y="17" width="26" height="6" fill="#FF6666" opacity="0.7"/>
-                    </svg>`,
+                    type: 'x3d',
+                    x3d: `<x3d width="60px" height="60px" style="background: transparent;">
+                        <scene>
+                            <transform rotation="0 1 0 0.785">
+                                <!-- 十字架形状 -->
+                                <!-- 竖条 -->
+                                <shape>
+                                    <appearance>
+                                        <material diffuseColor="1 0 0" emissiveColor="0.5 0 0" specularColor="1 0.5 0.5"/>
+                                    </appearance>
+                                    <box size="0.3 1 0.3"/>
+                                </shape>
+                                <!-- 横条 -->
+                                <shape>
+                                    <appearance>
+                                        <material diffuseColor="1 0 0" emissiveColor="0.5 0 0" specularColor="1 0.5 0.5"/>
+                                    </appearance>
+                                    <box size="1 0.3 0.3"/>
+                                </shape>
+                                <!-- 中心发光球 -->
+                                <shape>
+                                    <appearance>
+                                        <material diffuseColor="1 0.4 0.4" emissiveColor="1 0.2 0.2" transparency="0.3"/>
+                                    </appearance>
+                                    <sphere radius="0.25"/>
+                                </shape>
+                            </transform>
+                            
+                            <pointLight location="0 0 2" intensity="0.8" color="1 0.5 0.5"/>
+                            <viewpoint position="0 0 2.5"/>
+                        </scene>
+                    </x3d>`,
                     width: 30,
                     height: 30
                 },
                 energy: {
-                    svg: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M25,5 L15,22 L22,22 L15,35 L25,18 L18,18 Z" fill="#FFD700" stroke="#FFA500" stroke-width="2"/>
-                    </svg>`,
+                    type: 'x3d',
+                    x3d: `<x3d width="60px" height="60px" style="background: transparent;">
+                        <scene>
+                            <transform rotation="0 1 0 0.785">
+                                <!-- 闪电形状 -->
+                                <transform translation="0 0.3 0">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="1 0.843 0" emissiveColor="1 0.7 0" specularColor="1 1 0.5"/>
+                                        </appearance>
+                                        <cone bottomRadius="0.3" height="0.6"/>
+                                    </shape>
+                                </transform>
+                                <transform translation="0 -0.3 0" rotation="1 0 0 3.14159">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="1 0.843 0" emissiveColor="1 0.7 0" specularColor="1 1 0.5"/>
+                                        </appearance>
+                                        <cone bottomRadius="0.3" height="0.6"/>
+                                    </shape>
+                                </transform>
+                                <!-- 能量核心 -->
+                                <shape>
+                                    <appearance>
+                                        <material diffuseColor="1 1 0" emissiveColor="1 0.9 0" transparency="0.2"/>
+                                    </appearance>
+                                    <sphere radius="0.2"/>
+                                </shape>
+                            </transform>
+                            
+                            <pointLight location="0 0 2" intensity="0.9" color="1 1 0.5"/>
+                            <viewpoint position="0 0 2.5"/>
+                        </scene>
+                    </x3d>`,
                     width: 30,
                     height: 30
                 },
                 weapon: {
-                    svg: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="5" y="18" width="30" height="4" fill="#2196F3"/>
-                        <rect x="18" y="5" width="4" height="30" fill="#2196F3"/>
-                        <circle cx="20" cy="20" r="6" fill="#64B5F6"/>
-                        <text x="20" y="25" text-anchor="middle" fill="#FFF" font-size="10">W</text>
-                    </svg>`,
+                    type: 'x3d',
+                    x3d: `<x3d width="60px" height="60px" style="background: transparent;">
+                        <scene>
+                            <transform rotation="0 1 0 0.785">
+                                <!-- 武器升级 - 十字准星 -->
+                                <!-- 横条 -->
+                                <shape>
+                                    <appearance>
+                                        <material diffuseColor="0.13 0.59 0.95" emissiveColor="0 0.3 0.8" specularColor="0.5 0.7 1"/>
+                                    </appearance>
+                                    <cylinder radius="0.1" height="1"/>
+                                </shape>
+                                <!-- 竖条 -->
+                                <transform rotation="0 0 1 1.5708">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.13 0.59 0.95" emissiveColor="0 0.3 0.8" specularColor="0.5 0.7 1"/>
+                                        </appearance>
+                                        <cylinder radius="0.1" height="1"/>
+                                    </shape>
+                                </transform>
+                                <!-- 中心球 -->
+                                <shape>
+                                    <appearance>
+                                        <material diffuseColor="0.39 0.71 0.96" emissiveColor="0.2 0.5 1" transparency="0.2"/>
+                                    </appearance>
+                                    <sphere radius="0.25"/>
+                                </shape>
+                                <!-- W字母（简化为环） -->
+                                <transform>
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="1 1 1" emissiveColor="0.8 0.8 1"/>
+                                        </appearance>
+                                        <torus innerRadius="0.05" outerRadius="0.15"/>
+                                    </shape>
+                                </transform>
+                            </transform>
+                            
+                            <pointLight location="0 0 2" intensity="0.8" color="0.5 0.7 1"/>
+                            <viewpoint position="0 0 2.5"/>
+                        </scene>
+                    </x3d>`,
                     width: 30,
                     height: 30
                 },
                 shield: {
-                    svg: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M20,5 L35,12 L35,25 C35,30 20,35 20,35 C20,35 5,30 5,25 L5,12 Z" 
-                              fill="#4CAF50" stroke="#2E7D32" stroke-width="2"/>
-                        <path d="M20,10 L30,15 L30,24 C30,27 20,30 20,30 C20,30 10,27 10,24 L10,15 Z" 
-                              fill="#66BB6A" opacity="0.7"/>
-                    </svg>`,
+                    type: 'x3d',
+                    x3d: `<x3d width="60px" height="60px" style="background: transparent;">
+                        <scene>
+                            <transform rotation="0 1 0 0.785">
+                                <!-- 护盾形状 -->
+                                <transform>
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.3 0.69 0.31" emissiveColor="0 0.3 0" specularColor="0.5 1 0.5" transparency="0.3"/>
+                                        </appearance>
+                                        <box size="0.6 0.8 0.1"/>
+                                    </shape>
+                                </transform>
+                                <!-- 护盾装饰 -->
+                                <transform translation="0 0 0.1">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.4 0.73 0.42" emissiveColor="0.1 0.4 0.1" transparency="0.5"/>
+                                        </appearance>
+                                        <box size="0.4 0.6 0.05"/>
+                                    </shape>
+                                </transform>
+                                <!-- 能量核心 -->
+                                <transform translation="0 0 0.15">
+                                    <shape>
+                                        <appearance>
+                                            <material diffuseColor="0.5 1 0.5" emissiveColor="0.3 0.8 0.3" transparency="0.2"/>
+                                        </appearance>
+                                        <sphere radius="0.15"/>
+                                    </shape>
+                                </transform>
+                            </transform>
+                            
+                            <pointLight location="0 0 2" intensity="0.8" color="0.5 1 0.5"/>
+                            <viewpoint position="0 0 2.5"/>
+                        </scene>
+                    </x3d>`,
                     width: 30,
                     height: 30
                 }
@@ -1030,17 +1155,23 @@ class AssetManager {
             container.style.position = 'absolute';
             container.style.left = '-1000px';
             container.style.top = '-1000px';
+            container.style.width = '200px';
+            container.style.height = '200px';
             container.innerHTML = data.x3d;
             document.body.appendChild(container);
             
-            // 等待X3DOM初始化
-            setTimeout(() => {
+            // 强制X3DOM重新解析
+            if (window.x3dom && window.x3dom.reload) {
+                window.x3dom.reload();
+            }
+            
+            // 增加等待时间，确保X3D渲染完成
+            const checkX3D = () => {
                 const x3dElement = container.querySelector('x3d');
                 if (x3dElement) {
-                    // 等待渲染完成
-                    setTimeout(() => {
-                        const x3dCanvas = x3dElement.querySelector('canvas');
-                        if (x3dCanvas) {
+                    const x3dCanvas = x3dElement.querySelector('canvas');
+                    if (x3dCanvas && x3dCanvas.width > 0) {
+                        try {
                             // 创建图像
                             const img = new Image();
                             img.onload = () => {
@@ -1050,28 +1181,110 @@ class AssetManager {
                                     height: data.height,
                                     type: 'x3d'
                                 });
-                                console.log(`X3D Boss资源加载成功: ${key}`);
+                                console.log(`X3D资源加载成功: ${key}, 尺寸: ${img.width}x${img.height}`);
                                 
                                 // 清理临时容器
                                 document.body.removeChild(container);
                                 resolve();
                             };
                             
+                            img.onerror = () => {
+                                console.error(`X3D图像转换失败: ${key}`);
+                                // 使用备用渲染
+                                this.createFallbackAsset(key, data);
+                                document.body.removeChild(container);
+                                resolve();
+                            };
+                            
                             // 转换canvas到图像
-                            img.src = x3dCanvas.toDataURL();
-                        } else {
-                            console.error(`X3D canvas未找到: ${key}`);
+                            const dataURL = x3dCanvas.toDataURL();
+                            if (dataURL && dataURL !== 'data:,') {
+                                img.src = dataURL;
+                            } else {
+                                console.warn(`X3D canvas为空: ${key}, 使用备用渲染`);
+                                this.createFallbackAsset(key, data);
+                                document.body.removeChild(container);
+                                resolve();
+                            }
+                        } catch (error) {
+                            console.error(`X3D渲染错误: ${key}`, error);
+                            this.createFallbackAsset(key, data);
                             document.body.removeChild(container);
                             resolve();
                         }
-                    }, 500); // 等待渲染
+                    } else {
+                        // 重试几次
+                        setTimeout(() => checkX3D(), 200);
+                    }
                 } else {
-                    console.error(`X3D元素未找到: ${key}`);
+                    console.warn(`X3D元素未找到: ${key}, 使用备用渲染`);
+                    this.createFallbackAsset(key, data);
                     document.body.removeChild(container);
                     resolve();
                 }
-            }, 100); // 等待X3DOM初始化
+            };
+            
+            // 开始检查
+            setTimeout(checkX3D, 300);
         });
+    }
+    
+    /**
+     * 创建备用资源（当X3D加载失败时）
+     */
+    createFallbackAsset(key, data) {
+        // 创建一个简单的Canvas绘制备用图形
+        const canvas = document.createElement('canvas');
+        canvas.width = data.width || 100;
+        canvas.height = data.height || 100;
+        const ctx = canvas.getContext('2d');
+        
+        // 根据类型绘制不同的备用图形
+        if (key.includes('player')) {
+            // 玩家飞机 - 蓝色三角形
+            ctx.fillStyle = '#2196F3';
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 10);
+            ctx.lineTo(canvas.width - 10, canvas.height - 10);
+            ctx.lineTo(10, canvas.height - 10);
+            ctx.closePath();
+            ctx.fill();
+        } else if (key.includes('enemies')) {
+            // 敌人 - 红色菱形
+            ctx.fillStyle = '#FF5722';
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 10);
+            ctx.lineTo(canvas.width - 10, canvas.height / 2);
+            ctx.lineTo(canvas.width / 2, canvas.height - 10);
+            ctx.lineTo(10, canvas.height / 2);
+            ctx.closePath();
+            ctx.fill();
+        } else if (key.includes('bosses')) {
+            // Boss - 紫色圆形
+            ctx.fillStyle = '#9C27B0';
+            ctx.beginPath();
+            ctx.arc(canvas.width / 2, canvas.height / 2, Math.min(canvas.width, canvas.height) / 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // 添加标签
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(key.split('.').pop(), canvas.width / 2, canvas.height / 2);
+        
+        // 转换为图像
+        const img = new Image();
+        img.src = canvas.toDataURL();
+        
+        this.assets.set(key, {
+            image: img,
+            width: data.width,
+            height: data.height,
+            type: 'fallback'
+        });
+        
+        console.log(`使用备用渲染: ${key}`);
     }
     
     /**

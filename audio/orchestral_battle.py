@@ -331,6 +331,119 @@ def create_battle_brass():
     ]
     return brass
 
+def generate_bass_tone_fixed(frequency, duration, sample_rate=44100, amplitude=0.4):
+    """Generate a bass tone with proper bounds checking."""
+    if frequency == 0:
+        return np.zeros(int(sample_rate * duration))
+    
+    t = np.linspace(0, duration, int(sample_rate * duration), False)
+    
+    # ADSR envelope for bass
+    attack = int(0.02 * sample_rate)
+    decay = int(0.05 * sample_rate)
+    sustain_level = 0.7
+    release = int(0.1 * sample_rate)
+    
+    envelope = np.ones_like(t) * sustain_level
+    
+    # Bounds checking
+    if attack < len(envelope):
+        envelope[:attack] = np.linspace(0, 1, min(attack, len(envelope)))
+    
+    if attack < len(envelope) and attack + decay <= len(envelope):
+        envelope[attack:attack+decay] = np.linspace(1, sustain_level, decay)
+    
+    if release < len(envelope):
+        envelope[-release:] = np.linspace(sustain_level, 0, release)
+    
+    # Bass sound with fundamental and light harmonics
+    tone = amplitude * envelope * (
+        np.sin(2 * np.pi * frequency * t) +  # Strong fundamental
+        0.2 * np.sin(np.pi * frequency * t) +  # Sub-harmonic
+        0.1 * np.sin(4 * np.pi * frequency * t)  # Light 2nd harmonic
+    )
+    return tone
+
+def generate_brass_tone(frequency, duration, sample_rate=44100, amplitude=0.4):
+    """Generate brass instrument sound."""
+    if frequency == 0:
+        return np.zeros(int(sample_rate * duration))
+    
+    t = np.linspace(0, duration, int(sample_rate * duration), False)
+    
+    # Brass-like ADSR
+    attack = int(0.03 * sample_rate)
+    decay = int(0.05 * sample_rate)
+    sustain_level = 0.8
+    release = int(0.1 * sample_rate)
+    
+    envelope = np.ones_like(t) * sustain_level
+    if attack < len(envelope):
+        envelope[:attack] = np.linspace(0, 1, attack)
+    if attack + decay < len(envelope):
+        envelope[attack:attack+decay] = np.linspace(1, sustain_level, decay)
+    if release < len(envelope):
+        envelope[-release:] = np.linspace(sustain_level, 0, release)
+    
+    # Brass harmonics (strong odd harmonics)
+    tone = amplitude * envelope * (
+        1.0 * np.sin(2 * np.pi * frequency * t) +  # Fundamental
+        0.5 * np.sin(3 * np.pi * frequency * t) +  # 3rd harmonic (strong)
+        0.3 * np.sin(5 * np.pi * frequency * t) +  # 5th harmonic
+        0.2 * np.sin(7 * np.pi * frequency * t) +  # 7th harmonic
+        0.1 * np.sin(9 * np.pi * frequency * t)   # 9th harmonic
+    )
+    
+    # Add slight vibrato for realism
+    vibrato = 1 + 0.005 * np.sin(2 * np.pi * 4.5 * t)
+    tone = tone * vibrato
+    
+    return tone
+
+def generate_string_tone_fixed(frequency, duration, sample_rate=44100, amplitude=0.3, instrument='violin'):
+    """Generate string instrument sound with fixed bounds checking."""
+    if frequency == 0:
+        return np.zeros(int(sample_rate * duration))
+    
+    t = np.linspace(0, duration, int(sample_rate * duration), False)
+    
+    # ADSR envelope for strings
+    attack = int(0.05 * sample_rate) if instrument == 'violin' else int(0.08 * sample_rate)
+    decay = int(0.1 * sample_rate)
+    sustain_level = 0.8
+    release = int(0.15 * sample_rate)
+    
+    envelope = np.ones_like(t) * sustain_level
+    
+    # Bounds checking for envelope segments
+    if attack < len(envelope):
+        envelope[:attack] = np.linspace(0, 1, min(attack, len(envelope)))
+    
+    if attack < len(envelope) and attack + decay <= len(envelope):
+        envelope[attack:attack+decay] = np.linspace(1, sustain_level, decay)
+    
+    if release < len(envelope):
+        envelope[-release:] = np.linspace(sustain_level, 0, release)
+    
+    # Sawtooth wave synthesis for string-like sound
+    phase = (t * frequency) % 1
+    sawtooth = 2 * phase - 1
+    
+    # Add vibrato for realism
+    vibrato_freq = 5.0  # Hz
+    vibrato_depth = 0.01 if instrument == 'violin' else 0.005
+    vibrato = 1 + vibrato_depth * np.sin(2 * np.pi * vibrato_freq * t)
+    
+    # Combine sawtooth with harmonics
+    tone = amplitude * envelope * (
+        0.6 * sawtooth +  # Main sawtooth
+        0.2 * np.sin(2 * np.pi * frequency * t * vibrato) +  # Fundamental with vibrato
+        0.1 * np.sin(4 * np.pi * frequency * t) +  # 2nd harmonic
+        0.1 * np.sin(3 * np.pi * frequency * t)  # 3rd harmonic
+    )
+    
+    return tone
+
 def main():
     print("Generating Orchestral Battle Music")
     print("=" * 50)
@@ -360,7 +473,7 @@ def main():
     melody_track = np.array([])
     for note, duration in melody:
         frequency = NOTES.get(note, 0)
-        tone = generate_string_tone(frequency, duration * beat_duration, sample_rate, 
+        tone = generate_string_tone_fixed(frequency, duration * beat_duration, sample_rate, 
                                    amplitude=0.35, instrument='violin')
         melody_track = np.concatenate([melody_track, tone])
     
@@ -369,7 +482,7 @@ def main():
     bass_track = np.array([])
     for note, duration in bass:
         frequency = NOTES.get(note, 0)
-        tone = generate_bass_tone(frequency, duration * beat_duration, sample_rate, amplitude=0.7)
+        tone = generate_bass_tone_fixed(frequency, duration * beat_duration, sample_rate, amplitude=0.7)
         bass_track = np.concatenate([bass_track, tone])
     
     # Generate drum track
@@ -398,7 +511,7 @@ def main():
             for note in notes_tuple:
                 frequency = NOTES.get(note, 0)
                 # Use shorter attack for staccato effect in battle
-                tone = generate_string_tone(frequency, chord_duration, sample_rate, 
+                tone = generate_string_tone_fixed(frequency, chord_duration, sample_rate, 
                                            amplitude=0.12, instrument='violin')
                 chord_sound += tone
         
@@ -421,7 +534,7 @@ def main():
         (melody_track, 0.0, 0.2),       # Melody: center, light reverb
         (bass_track, 0.0, 0.1),          # Bass: center, minimal reverb
         (drum_track, -0.05, 0.05),       # Drums: slightly left, very dry
-        (string_track, -0.3, 0.3),       # Strings: left, moderate reverb
+        #(string_track, -0.3, 0.3),       # Strings: left, moderate reverb
         (brass_track, 0.3, 0.35),        # Brass: right, moderate reverb
     ]
     

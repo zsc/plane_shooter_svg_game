@@ -589,7 +589,40 @@ class BossManager {
             this.defeatSequenceActive = false;
             this.currentBoss = null;
             this.inBossBattle = false;
+            
+            // 触发击败回调
+            if (this.onBossDefeated) {
+                this.onBossDefeated();
+            }
         }
+    }
+    
+    /**
+     * 根据模板创建Boss实例
+     */
+    createBossFromTemplate(bossType) {
+        const template = this.bossTemplates[bossType];
+        if (!template) {
+            console.warn(`未找到Boss模板: ${bossType}`);
+            return null;
+        }
+        
+        // 创建新Boss实例
+        const boss = new Boss(
+            GameConfig.CANVAS.WIDTH / 2,
+            150,
+            bossType
+        );
+        
+        // 应用模板属性
+        boss.maxHealth = template.maxHealth;
+        boss.currentHealth = template.maxHealth;
+        boss.defense = template.defense;
+        boss.damageReduction = template.damageReduction;
+        boss.baseSpeed = template.baseSpeed;
+        boss.scoreValue = template.scoreValue;
+        
+        return boss;
     }
     
     /**

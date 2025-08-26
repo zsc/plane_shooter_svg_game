@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>X3D 集成演示</title>
+    <script src="https://x3dom.org/release/x3dom.js"></script>
+    <link rel="stylesheet" href="https://x3dom.org/release/x3dom.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #222;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        
+        .container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .panel {
+            border: 2px solid #444;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        
+        h2 {
+            margin-top: 0;
+            color: #FFD700;
+        }
+        
+        /* X3D 样式 */
+        x3d {
+            border: 1px solid #666;
+            background: linear-gradient(to bottom, #001a33, #003366);
+        }
+        
+        /* 2D Canvas */
+        #canvas2d {
+            border: 1px solid #666;
+            background: #000;
+        }
+        
+        /* 混合画布 */
+        #hybridContainer {
+            position: relative;
+            width: 400px;
+            height: 300px;
+        }
+        
+        #hybridContainer canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        button {
+            margin: 5px;
+            padding: 10px 20px;
+            background: #FFD700;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            background: #FFA500;
+        }
+        
+        .rotating {
+            animation: rotate 3s linear infinite;
+        }
+        
+        @keyframes rotate {
+            from { transform: rotateY(0deg); }
+            to { transform: rotateY(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h1>X3D 与 2D Canvas 集成方案</h1>
+    
+    <div class="container">
+        <!-- X3D 3D 模型展示 -->
+        <div class="panel">
+            <h2>1. 纯 X3D 3D 模型</h2>
+            <x3d width="400px" height="300px" id="x3d-scene">
+                <scene>
+                    <!-- 战斗机模型 -->
+                    <transform id="fighter-transform" rotation="0 1 0 0">
+                        <!-- 机身 -->
+                        <shape>
+                            <appearance>
+                                <material diffuseColor="0.3 0.5 0.8" specularColor="1 1 1"/>
+                            </appearance>
+                            <box size="1 0.3 2"/>
+                        </shape>
+                        
+                        <!-- 机翼 -->
+                        <transform translation="-1 0 0">
+                            <shape>
+                                <appearance>
+                                    <material diffuseColor="0.2 0.4 0.7"/>
+                                </appearance>
+                                <box size="1.5 0.1 0.8"/>
+                            </shape>
+                        </transform>
+                        
+                        <transform translation="1 0 0">
+                            <shape>
+                                <appearance>
+                                    <material diffuseColor="0.2 0.4 0.7"/>
+                                </appearance>
+                                <box size="1.5 0.1 0.8"/>
+                            </shape>
+                        </transform>
+                        
+                        <!-- 尾翼 -->
+                        <transform translation="0 0.3 -0.8">
+                            <shape>
+                                <appearance>
+                                    <material diffuseColor="0.8 0.2 0.2"/>
+                                </appearance>
+                                <cone bottomRadius="0.3" height="0.6"/>
+                            </shape>
+                        </transform>
+                    </transform>
+                    
+                    <!-- 光源 -->
+                    <directionalLight direction="0 -1 -1" intensity="0.8"/>
+                    <directionalLight direction="1 0 0" intensity="0.3" color="0.5 0.5 1"/>
+                    
+                    <!-- 视角 -->
+                    <viewpoint position="0 2 6" orientation="-0.2 0 0 0.3"/>
+                    
+                    <!-- 背景 -->
+                    <background skyColor="0 0.05 0.1 0 0.1 0.2 0 0.15 0.3"/>
+                </scene>
+            </x3d>
+            
+            <div>
+                <button onclick="rotateFighter()">旋转战斗机</button>
+                <button onclick="changeFighterColor()">改变颜色</button>
+            </div>
+        </div>
+        
+        <!-- X3D 转 2D Canvas -->
+        <div class="panel">
+            <h2>2. X3D 渲染到 2D Canvas</h2>
+            <canvas id="canvas2d" width="400" height="300"></canvas>
+            <div>
+                <button onclick="captureX3DToCanvas()">捕获3D到2D</button>
+                <button onclick="animateCapture()">动画捕获</button>
+            </div>
+        </div>
+        
+        <!-- 混合渲染 -->
+        <div class="panel">
+            <h2>3. 2D/3D 混合渲染</h2>
+            <div id="hybridContainer">
+                <canvas id="bgCanvas" width="400" height="300"></canvas>
+                <x3d width="400px" height="300px" style="background: transparent;">
+                    <scene>
+                        <!-- Boss 3D 模型 -->
+                        <transform id="boss-transform" translation="0 0 0">
+                            <!-- 主体 -->
+                            <shape>
+                                <appearance>
+                                    <material diffuseColor="0.8 0.2 0.2" specularColor="1 0 0"/>
+                                </appearance>
+                                <sphere radius="1"/>
+                            </shape>
+                            
+                            <!-- 武器 -->
+                            <transform translation="-1.5 0 0">
+                                <shape>
+                                    <appearance>
+                                        <material diffuseColor="0.5 0.5 0.5" specularColor="1 1 1"/>
+                                    </appearance>
+                                    <cylinder radius="0.2" height="1"/>
+                                </shape>
+                            </transform>
+                            
+                            <transform translation="1.5 0 0">
+                                <shape>
+                                    <appearance>
+                                        <material diffuseColor="0.5 0.5 0.5" specularColor="1 1 1"/>
+                                    </appearance>
+                                    <cylinder radius="0.2" height="1"/>
+                                </shape>
+                            </transform>
+                        </transform>
+                        
+                        <pointLight location="0 5 5" intensity="0.9"/>
+                        <viewpoint position="0 0 8"/>
+                    </scene>
+                </x3d>
+            </div>
+            <div>
+                <button onclick="startHybridAnimation()">开始混合动画</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 实现建议 -->
+    <div class="panel" style="margin-top: 20px; width: 100%;">
+        <h2>实现建议</h2>
+        <ol>
+            <li><strong>方案1 - 预渲染（推荐）：</strong>
+                <ul>
+                    <li>将 X3D 模型预渲染为精灵图集</li>
+                    <li>保持现有 2D 渲染管线</li>
+                    <li>性能最好，改动最小</li>
+                </ul>
+            </li>
+            <li><strong>方案2 - WebGL 重构：</strong>
+                <ul>
+                    <li>使用 Three.js 或 Babylon.js</li>
+                    <li>完全 3D 化，可加载 X3D 模型</li>
+                    <li>性能开销大，需要重写渲染系统</li>
+                </ul>
+            </li>
+            <li><strong>方案3 - 混合渲染：</strong>
+                <ul>
+                    <li>2D 背景 + 3D 实体</li>
+                    <li>使用透明 X3D 覆盖层</li>
+                    <li>实现复杂，可能有性能问题</li>
+                </ul>
+            </li>
+        </ol>
+    </div>
+    
+    <script>
+        let rotationAngle = 0;
+        let animationId = null;
+        
+        // 旋转战斗机
+        function rotateFighter() {
+            const fighter = document.getElementById('fighter-transform');
+            rotationAngle += 30;
+            fighter.setAttribute('rotation', `0 1 0 ${rotationAngle * Math.PI / 180}`);
+        }
+        
+        // 改变颜色
+        function changeFighterColor() {
+            const materials = document.querySelectorAll('#x3d-scene material');
+            materials[0].setAttribute('diffuseColor', 
+                `${Math.random()} ${Math.random()} ${Math.random()}`);
+        }
+        
+        // 捕获 X3D 到 Canvas
+        function captureX3DToCanvas() {
+            const x3dCanvas = document.querySelector('#x3d-scene canvas');
+            const canvas2d = document.getElementById('canvas2d');
+            const ctx = canvas2d.getContext('2d');
+            
+            if (x3dCanvas) {
+                // 清空画布
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, 400, 300);
+                
+                // 绘制 X3D 内容
+                ctx.drawImage(x3dCanvas, 0, 0, 400, 300);
+                
+                // 添加 2D 效果
+                ctx.strokeStyle = '#FFD700';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(10, 10, 380, 280);
+                
+                ctx.fillStyle = '#00FF00';
+                ctx.font = '20px Arial';
+                ctx.fillText('3D 转 2D 成功！', 150, 150);
+            } else {
+                console.error('X3D 画布未找到，请确保 X3DOM 已加载');
+            }
+        }
+        
+        // 动画捕获
+        function animateCapture() {
+            let frame = 0;
+            const canvas2d = document.getElementById('canvas2d');
+            const ctx = canvas2d.getContext('2d');
+            
+            function animate() {
+                // 旋转3D模型
+                rotateFighter();
+                
+                // 等待一帧后捕获
+                setTimeout(() => {
+                    const x3dCanvas = document.querySelector('#x3d-scene canvas');
+                    if (x3dCanvas) {
+                        ctx.clearRect(0, 0, 400, 300);
+                        ctx.drawImage(x3dCanvas, 0, 0, 400, 300);
+                        
+                        // 添加帧数
+                        ctx.fillStyle = '#FFD700';
+                        ctx.font = '16px Arial';
+                        ctx.fillText(`Frame: ${frame}`, 10, 30);
+                    }
+                }, 50);
+                
+                frame++;
+                if (frame < 60) {
+                    requestAnimationFrame(animate);
+                }
+            }
+            
+            animate();
+        }
+        
+        // 混合动画
+        function startHybridAnimation() {
+            const bgCanvas = document.getElementById('bgCanvas');
+            const bgCtx = bgCanvas.getContext('2d');
+            const boss = document.getElementById('boss-transform');
+            
+            let time = 0;
+            
+            function drawBackground() {
+                // 绘制 2D 背景
+                bgCtx.fillStyle = '#001a33';
+                bgCtx.fillRect(0, 0, 400, 300);
+                
+                // 星空
+                for (let i = 0; i < 50; i++) {
+                    const x = (i * 73 + time) % 400;
+                    const y = (i * 37) % 300;
+                    const size = (i % 3) + 1;
+                    
+                    bgCtx.fillStyle = `rgba(255, 255, 255, ${0.3 + (i % 10) / 10})`;
+                    bgCtx.fillRect(x, y, size, size);
+                }
+                
+                // 网格
+                bgCtx.strokeStyle = 'rgba(0, 255, 0, 0.2)';
+                bgCtx.lineWidth = 1;
+                for (let x = 0; x < 400; x += 40) {
+                    bgCtx.beginPath();
+                    bgCtx.moveTo(x, 0);
+                    bgCtx.lineTo(x, 300);
+                    bgCtx.stroke();
+                }
+                for (let y = 0; y < 300; y += 40) {
+                    bgCtx.beginPath();
+                    bgCtx.moveTo(0, y);
+                    bgCtx.lineTo(400, y);
+                    bgCtx.stroke();
+                }
+                
+                // UI 元素
+                bgCtx.fillStyle = '#FFD700';
+                bgCtx.font = '20px Arial';
+                bgCtx.fillText('2D 背景 + 3D Boss', 10, 30);
+                
+                // 生命条
+                bgCtx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+                bgCtx.fillRect(50, 250, 300, 20);
+                bgCtx.fillStyle = '#FF0000';
+                bgCtx.fillRect(50, 250, 300 * (0.5 + Math.sin(time / 30) * 0.5), 20);
+            }
+            
+            function animate() {
+                drawBackground();
+                
+                // 动画 3D Boss
+                const x = Math.sin(time / 50) * 2;
+                const y = Math.cos(time / 40) * 0.5;
+                boss.setAttribute('translation', `${x} ${y} 0`);
+                boss.setAttribute('rotation', `0 1 0 ${time / 30}`);
+                
+                time++;
+                if (time < 300) {
+                    animationId = requestAnimationFrame(animate);
+                }
+            }
+            
+            // 停止之前的动画
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            
+            animate();
+        }
+        
+        // 初始化
+        window.addEventListener('load', () => {
+            console.log('X3D 集成演示加载完成');
+            
+            // 绘制初始 2D 背景
+            const bgCanvas = document.getElementById('bgCanvas');
+            const bgCtx = bgCanvas.getContext('2d');
+            bgCtx.fillStyle = '#001a33';
+            bgCtx.fillRect(0, 0, 400, 300);
+        });
+    </script>
+</body>
+</html>
